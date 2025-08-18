@@ -1,0 +1,17 @@
+# Environment definitions
+# Each entry:
+#   # <index> <name>
+#   <python code>
+#   ---
+# 1 example
+from src.env import MuFlex
+fmu_configs = [{'io_type': 'OfficeS',
+  'path': 'C:/Users/Administrator/Desktop/MuFlex/models/small_office/small_baseline_v1.fmu'},
+ {'io_type': 'OfficeS',
+  'path': 'C:/Users/Administrator/Desktop/MuFlex/models/small_office/small_baseline_v2.fmu'},
+ {'io_type': 'OfficeM',
+  'path': 'C:/Users/Administrator/Desktop/MuFlex/models/medium_office/medium_baseline_v1.fmu'},
+ {'io_type': 'OfficeM',
+  'path': 'C:/Users/Administrator/Desktop/MuFlex/models/medium_office/medium_baseline_v2.fmu'}]
+env = MuFlex(fmu_configs=fmu_configs, sim_days=1, start_date=201, step_size=900, action_type='continuous', include_hour=True, reward_mode='default')
+---
