@@ -188,4 +188,4 @@ arXiv. https://doi.org/10.48550/arXiv.2508.13532 • [arXiv page](https://arxiv.
 
 This project is released under the **MIT License**. See [`LICENSE`](LICENSE) for details.
 
-*Feel free to open issues, submit pull requests, or start a discussion. Happy Coding!* 🎉
+### *Feel free to open issues, submit pull requests, or start a discussion. Happy Coding!* 🎉
