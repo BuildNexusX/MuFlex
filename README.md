@@ -162,17 +162,30 @@ env.close()
 
 ## 📚 Citation
 
-```
-Wu et al., “Name”
-Conference/Journal, Year.
+If you use **MuFlex**, please cite the **arXiv preprint** first:
+
+**Wu, Z., Korolija, I., & Tang, R. (2025). _MuFlex: A Scalable, Physics-based Platform for Multi-Building Flexibility Analysis and Coordination._**  
+arXiv. https://doi.org/10.48550/arXiv.2508.13532 • [arXiv page](https://arxiv.org/abs/2508.13532)
+
+**BibTeX**
+```bibtex
+@misc{wu2025muflex,
+  title         = {MuFlex: A Scalable, Physics-based Platform for Multi-Building Flexibility Analysis and Coordination},
+  author        = {Wu, Ziyan and Korolija, Iva and Tang, Ruqiang},
+  year          = {2025},
+  eprint        = {2508.13532},
+  archivePrefix = {arXiv},
+  doi           = {10.48550/arXiv.2508.13532},
+  url           = {https://arxiv.org/abs/2508.13532}
+}
 ```
 
 ---
 
 ## 📝 License
 
-This project is released under the MIT License. See [LICENSE](LICENSE) for details.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
----
+This project is released under the **MIT License**. See [`LICENSE`](LICENSE) for details.
 
 *Feel free to open issues, submit pull requests, or start a discussion. Happy Coding!* 🎉
