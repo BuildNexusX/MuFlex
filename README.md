@@ -10,7 +10,7 @@
 ```bash
 # Windows
 # Clone the repository
-git clone https://github.com/Ziyan0825/MUFLEX.git
+git clone https://github.com/BuildNexusX/MUFLEX.git
 cd MUFLEX
 
 # Create and activate a Python 3.9 environment (Conda recommended)
