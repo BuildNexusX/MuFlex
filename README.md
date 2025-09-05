@@ -171,7 +171,7 @@ arXiv. https://doi.org/10.48550/arXiv.2508.13532 • [arXiv page](https://arxiv.
 ```bibtex
 @misc{wu2025muflex,
   title         = {MuFlex: A Scalable, Physics-based Platform for Multi-Building Flexibility Analysis and Coordination},
-  author        = {Wu, Ziyan and Korolija, Iva and Tang, Ruqiang},
+  author        = {Wu, Ziyan and Korolija, Ivan and Tang, Rui},
   year          = {2025},
   eprint        = {2508.13532},
   archivePrefix = {arXiv},
