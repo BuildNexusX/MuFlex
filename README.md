@@ -5,7 +5,7 @@
   <img src="figs/MUFLEX.png" alt="MUFLEX Logo" width="280">
 </p>
 
-## ⚙️ Installation & Dependencies (Python 3.9 recommended)
+## ⚙️ Installation & Dependencies (Python 3.12 recommended)
 
 ```bash
 # Windows
@@ -13,8 +13,8 @@
 git clone https://github.com/BuildNexusX/MUFLEX.git
 cd MUFLEX
 
-# Create and activate a Python 3.9 environment (Conda recommended)
-conda create -n MUFLEX python=3.9 -y
+# Create and activate a Python 3.12 environment (Conda recommended)
+conda create -n MUFLEX python=3.12 -y
 conda activate MUFLEX
 ```
 
