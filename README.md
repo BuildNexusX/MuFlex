@@ -6,7 +6,9 @@
 </p>
 
 <p align="center">
-  🎥 <a href="https://www.bilibili.com/video/BV1aca9zPEVG/?share_source=copy_web&vd_source=177b394f89d5b57beb8201809652c5df" target="_blank"><b>Watch Demo Video on Bilibili</b></a>
+  <a href="https://www.bilibili.com/video/BV1aca9zPEVG/?share_source=copy_web&vd_source=177b394f89d5b57beb8201809652c5df" target="_blank">
+    <img src="https://img.shields.io/badge/🎥_Watch%20Demo%20Video-blue?style=for-the-badge&logo=youtube" alt="Watch Demo Video" width="250">
+  </a>
 </p>
 
 ## ⚙️ Installation & Dependencies (Python 3.12 recommended)
