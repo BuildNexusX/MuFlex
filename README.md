@@ -5,6 +5,10 @@
   <img src="figs/MUFLEX.png" alt="MUFLEX Logo" width="280">
 </p>
 
+<p align="center">
+  🎥 <a href="https://www.bilibili.com/video/BV1aca9zPEVG/?share_source=copy_web&vd_source=177b394f89d5b57beb8201809652c5df" target="_blank"><b>Watch Demo Video on Bilibili</b></a>
+</p>
+
 ## ⚙️ Installation & Dependencies (Python 3.12 recommended)
 
 ```bash
@@ -60,7 +64,7 @@ You will get a preview of all the observations and actions using the configurati
 - **Run:** launch the baseline controller.
 
 ### 📂 Manage Envs
-#### exsiting `example` is the environment used in paper
+#### existing `example` is the environment used in paper
 - **Saved Environments:** list all stored environments and their configurations.
 - **Delete Selected:** remove outdated environments.
 
