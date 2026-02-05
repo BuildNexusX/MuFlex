@@ -1,0 +1,257 @@
+{
+  "OfficeS": {
+    "INPUTS": [
+      "CoolSetP_A",
+      "CoolSetP_B",
+      "CoolSetP_C",
+      "CoolSetP_D",
+      "CoolSetP_E",
+      "ahuSAT"
+    ],
+    "OUTPUTS": [
+      "outRH",
+      "outTemp",
+      "outSolar",
+      "coilPower",
+      "fanPower",
+      "sysFR",
+      "sysTemp",
+      "z5Temp",
+      "z1Temp",
+      "z3Temp",
+      "z2Temp",
+      "z4Temp",
+      "outWind"
+    ],
+    "ob_base_low": [
+      0,
+      -30,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "ob_base_high": [
+      100,
+      50,
+      1500,
+      20000,
+      2000,
+      5,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      15
+    ],
+    "dims": [
+      21,
+      21,
+      21,
+      21,
+      21,
+      51
+    ],
+    "intervals": [
+      0.1,
+      0.1,
+      0.1,
+      0.1,
+      0.1,
+      0.1
+    ],
+    "base_mins": [
+      23,
+      23,
+      23,
+      23,
+      23,
+      10
+    ],
+    "base_maxs": [
+      25,
+      25,
+      25,
+      25,
+      25,
+      15
+    ]
+  },
+  "OfficeM": {
+    "INPUTS": [
+      "CoolSetP_bot",
+      "CoolSetP_mid",
+      "CoolSetP_top",
+      "ahuSAT_bot",
+      "ahuSAT_mid",
+      "ahuSAT_top"
+    ],
+    "OUTPUTS": [
+      "outRH",
+      "outTemp",
+      "outSolar",
+      "coilPower_bot",
+      "coilPower_mid",
+      "coilPower_top",
+      "fanPower_bot",
+      "fanPower_mid",
+      "fanPower_top",
+      "sysFR_bot",
+      "sysFR_mid",
+      "sysFR_top",
+      "sysTemp_bot",
+      "sysTemp_mid",
+      "sysTemp_top",
+      "BotMeanTemp",
+      "MidMeanTemp",
+      "TopMeanTemp",
+      "outWind"
+    ],
+    "ob_base_low": [
+      0,
+      -30,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "ob_base_high": [
+      100,
+      50,
+      1500,
+      40000,
+      40000,
+      40000,
+      5000,
+      5000,
+      5000,
+      10,
+      10,
+      10,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      15
+    ],
+    "dims": [
+      21,
+      21,
+      21,
+      51,
+      51,
+      51
+    ],
+    "intervals": [
+      0.1,
+      0.1,
+      0.1,
+      0.1,
+      0.1,
+      0.1
+    ],
+    "base_mins": [
+      23,
+      23,
+      23,
+      10,
+      10,
+      10
+    ],
+    "base_maxs": [
+      25,
+      25,
+      25,
+      15,
+      15,
+      15
+    ]
+  },
+  "test_fmu": {
+    "INPUTS": [
+      "CoolSetP_Q",
+      "CoolSetP_W",
+      "CoolSetP_E",
+      "CoolSetP_R",
+      "CoolSetP_T",
+      "ahuSAT"
+    ],
+    "OUTPUTS": [
+      "zQTemp",
+      "zWTemp",
+      "zETemp",
+      "zRTemp",
+      "zTTemp"
+    ],
+    "ob_base_low": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "ob_base_high": [
+      50,
+      50,
+      50,
+      50,
+      50
+    ],
+    "dims": [
+      9,
+      9,
+      9,
+      9,
+      9,
+      15
+    ],
+    "intervals": [
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5
+    ],
+    "base_mins": [
+      22,
+      22,
+      22,
+      22,
+      22,
+      9
+    ],
+    "base_maxs": [
+      26,
+      26,
+      26,
+      26,
+      26,
+      16
+    ]
+  }
+}

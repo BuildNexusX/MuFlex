@@ -1,0 +1,8 @@
+conda install -c conda-forge pyfmi
+conda install -c conda-forge assimulo
+python -m pip install numpy==2.0.2
+python -m pip install pandas==2.2.3
+python -m pip install Pillow==11.0.0
+python -m pip install gymnasium==1.0.0
+python -m pip install openpyxl==3.1.5
+
