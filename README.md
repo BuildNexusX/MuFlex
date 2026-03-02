@@ -5,22 +5,14 @@
   <img src="figs/MUFLEX.png" alt="MUFLEX Logo" width="280">
 </p>
 
-
-
-
-
----
-
 ---
 ## 📰 News
 🎉 **Accepted by *Energy*** — **February 2026**  
 🔗 **Paper (DOI):** https://doi.org/10.1016/j.energy.2026.140565
 
 
-
 ---
 
----
 ## ⚙️ Installation (Windows)
 ### ✅ Step 1 - Download Repo
 ```bash
@@ -56,11 +48,6 @@ Typical example (may vary depending on your install location):
 #### - Restart Your Computer
 After updating PATH, **restart your computer** to make sure the new environment variables take effect.
 
-
-
-
----
-
 ---
 ## 🔁 Reproduce Paper Experiments
 
@@ -91,8 +78,6 @@ It includes:
 ### 📂 Weather Files
 All experiments use the weather files in:
 - `models/weather/`
-
----
 
 ---
 ## 🤖 RL Implementation (SAC, Stable-Baselines3)
@@ -153,8 +138,6 @@ So the final observation dimension becomes:
 
 ---
 
----
-
 ## 🖥️ GUIs Overview (Two Tools)
 
 **MuFlex** provides two lightweight GUIs:
@@ -206,16 +189,11 @@ FMUs with different variables (different I/O) should be registered as different 
 ### 🔌Tab 3 - Save back to `config/fmu_config.json`
 
 ---
-
----
 ## 📚 Citation
 
 If you use **MuFlex**, please cite our paper:
 
 **Wu Z, Korolija I, Tang R, _MuFlex: A Scalable, Physics-based Platform for Multi-Building Flexibility Analysis and Coordination_, Energy, https://doi.org/10.1016/j.energy.2026.140565**
-
-
----
 
 ---
 
@@ -224,8 +202,6 @@ If you use **MuFlex**, please cite our paper:
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 This project is released under the **MIT License**. See [`LICENSE`](LICENSE) for details.
-
----
 
 ---
 
