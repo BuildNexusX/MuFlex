@@ -80,7 +80,7 @@ All experiments use the weather files in:
 - `models/weather/`
 
 ---
-## 🤖 RL Implementation (SAC, Stable-Baselines3)
+## 🤖 RL Implementation
 
 ### 🧩 Workflow of how RL agent interacts with MuFlex environment:
 
