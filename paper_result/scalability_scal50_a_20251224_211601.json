@@ -1,0 +1,18 @@
+{
+  "timestamp_local": "20251224_211601",
+  "elapsed_seconds": 631.622697,
+  "memory_rss_start_mb": 91.7421875,
+  "memory_rss_end_mb": 2319.44921875,
+  "peak_tracemalloc_mb": 729.4492883682251,
+  "env_name": "scal50_a",
+  "num_fmus": 50,
+  "sim_days": 30,
+  "start_date": 201,
+  "step_size": 900,
+  "action_type": "continuous",
+  "include_hour": true,
+  "reward_mode": "custom",
+  "max_steps": null,
+  "steps_run": 2881,
+  "total_reward": 0.0
+}

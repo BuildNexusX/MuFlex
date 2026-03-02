@@ -5,174 +5,228 @@
   <img src="figs/MUFLEX.png" alt="MUFLEX Logo" width="280">
 </p>
 
-## ⚙️ Installation & Dependencies (Python 3.9 recommended)
 
+
+
+
+---
+
+---
+## 📰 News
+🎉 **Accepted by *Energy*** — **February 2026**  
+🔗 **Paper (DOI):** https://doi.org/10.1016/j.energy.2026.140565
+
+
+
+---
+
+---
+## ⚙️ Installation (Windows)
+### ✅ Step 1 - Download Repo
 ```bash
-# Windows
 # Clone the repository
-git clone https://github.com/Ziyan0825/MUFLEX.git
+git clone https://github.com/BuildNexusX/MUFLEX.git
 cd MUFLEX
 
-# Create and activate a Python 3.9 environment (Conda recommended)
-conda create -n MUFLEX python=3.9 -y
+# Create and activate a Python 3.12 environment (Conda recommended)
+conda create -n MUFLEX python=3.12 -y
 conda activate MUFLEX
 ```
-
-
-### Install packages
+### ✅ Step 2 - Install packages
 Run the commands listed in requirements/install.txt 
 
-### Run Scripts
+### ✅ Step 3 - EnergyPlus 9.2.0 Setup
+To run models provided in MuFlex, you must install EnergyPlus v9.2.0 and add the EnergyPlus folder to your PATH.
 
-```bash
-# Run Baseline without GUI
-python -m algo.baseline
-# Main Simulation GUI
-python MuFlex.py 
-# Model Management GUI
-python Add_FMU.py
-```
+#### - Download & Install EnergyPlus 9.2.0
+- Download **EnergyPlus v9.2.0** from:  
+  https://github.com/NatLabRockies/EnergyPlus/releases/tag/v9.2.0
+- Install it on your machine.
+
+#### - Add EnergyPlus to PATH (Both System & User)
+On **Windows**, add the EnergyPlus installation directory to **both**:
+- **System variables** → **Path**
+- **User variables** → **Path**
+
+Typical example (may vary depending on your install location):
+- `C:\EnergyPlusV9-2-0\`
+
+❗ Make sure the folder you add contains `energyplus.exe` (i.e., the EnergyPlus “root” install folder).
+
+#### - Restart Your Computer
+After updating PATH, **restart your computer** to make sure the new environment variables take effect.
 
 
----
 
-# ⚡️ Simulate Building Clusters in 5 Minutes
-Start exploring building flexibility with just a few clicks using ▶️`python MuFlex.py`
-
-MuFlex scales simulation from a single building to large clusters while keeping the UI simple and configuration lightweight.
-
-## 🖥️ MuFlex GUI Overview - three tabs
-
-### 🛠️ Create Env 
-#### ❗ confirm simulation settings step by step
-- **FMU Configuration:** choose building types (managed in `Add_FMU.py`) and provide FMU paths.
-- **Simulation Parameters:** set the number of days (duration), start day of year (on which day of the year the simulation begins), and step size (must match the model inside timestep)
-- **Action/Observation Space Preview:** choose the environment’s action space type and optionally include hour-of-day in the observation vector.
-You will get a preview of all the observations and actions using the configuration you defined.
-- **Reward Function:** use the default reward with tunable weights (used in Paper) or a custom script.
-- **Env Name & Create:** name and save the environment once everything is configured.
-
-### 🚀 Run Baseline 
-#### for every environment you created
-- **Environment Selector:** pick a saved environment.
-- **Execution Options:** enable result saving and per-step logging.
-- **Baseline Actions:** specify fixed actions for each FMU.
-- **Run:** launch the baseline controller.
-
-### 📂 Manage Envs
-#### exsiting `example` is the environment used in paper
-- **Saved Environments:** list all stored environments and their configurations.
-- **Delete Selected:** remove outdated environments.
-
-## 📊 Simulation Output Files
-After a simulation completes, MuFlex saves several files in the output directory:
-
-- `Output_EPExport_Model` – EnergyPlus simulation results.
-- `simulation_data_<DATE>_<TIME>` – input and output records for each FMU.
-- `rewards.xlsx` – per-step reward trace (columns vary with reward mode).
-- `.txt` files – FMU execution logs.
 
 ---
 
-## 🔌 Add Custom FMU Types
-▶️`python Add_FMU.py` helps you register new building templates through a GUI. See `test_fmu` for an example.
+---
+## 🔁 Reproduce Paper Experiments
 
-### What is a “type”?
-Each *type* represents an FMU model with its own input and output variables.
-FMUs exposing different interfaces should be registered under different types.
+### 📂 Paper Results
+The control-performance results for:
+- SAC (RL controller)
+- Baseline controller 
+- Scalability tests
 
-### JSON fields
-Every type entry in `config/fmu_config.json` stores the following lists:
+are saved in:
+- `paper_result/`
 
-- **`INPUTS`** – controllable set‑point variables accepted by the FMU.
-- **`OUTPUTS`** – variables returned by the FMU and exposed to the agent.
-- **`ob_base_low`** / **`ob_base_high`** – expected min/max for each output, used for observation normalisation.
-- **`dims`** – number of discrete bins for each input (used when the action space type is `discrete`).
-- **`intervals`** – physical step size for each input; continuous actions are snapped to multiples of this value.
-- **`base_mins`** / **`base_maxs`** – physical lower and upper limits for each input.
+### 📂 Models Used in the Paper
 
-### GUI workflow
-#### 📋 Type List
-Browse existing FMU types.
+#### Demand Limiting Case Study (4-Building Cluster)
+The four buildings used in the case study are stored in:
+- `models/small_office/`
+- `models/medium_office/`
 
-#### 📝 Detail Editor
-Edit the lists above using JSON strings.
+#### Platform Scalability Test (50-Building Cluster)
+The 50-building scalability benchmark is stored in:
+- `models/scalability/`
 
-#### ⚙️ Management Buttons
-Add new types, remove outdated ones, and save everything back to the configuration file.
+It includes:
+- 10 Modelica residential models from Energym
+- 40 replicated EnergyPlus prototype buildings (derived from the case-study EnergyPlus prototypes)
+
+### 📂 Weather Files
+All experiments use the weather files in:
+- `models/weather/`
 
 ---
 
-## 📁 Repository Structure
-
-```text
-MuFlex/
-├── MuFlex.py                ▶️Simulation GUI launcher
-├── Add_FMU.py               ▶️GUI for registering custom FMU types
-├── README.md
-├── algo/                    📁Reward scripts and baseline
-│   ├── baseline.py          # Rule‑based controller (can be used for all cases)
-│   ├── custom_reward.py     # Edit this file to create your own reward calculation
-│   └── default_reward.py    # Reward function used in paper
-├── config/                  📁FMU type definitions
-│   └── fmu_config.json
-├── figs/                    📁Logos & diagrams
-├── models/                  📁EnergyPlus → FMU building models
-│   ├── add_fmu_test/        # Example FMU of using Add_FMU.py to integrate your own model
-│   ├── medium_office/       # Medium office FMUs
-│   ├── small_office/        # Small office FMUs
-│   └── weather/             # Weather files
-├── requirements/            📁Dependency files
-│   └── install.txt          # Commands can be pasted for installing required packages
-└── src/                     📁Core environment code
-    ├── buffer.py            # Replay buffer for RL implementation
-    ├── config.py            # Environment configuration helpers
-    ├── env.py               # Gymnasium-style main environment
-    └── env_list.txt         # Saved environments (created using MuFlex.py)
-```
-
 ---
+## 🤖 RL Implementation (SAC, Stable-Baselines3)
 
-## 🤖 RL Implementation Example
-### 4-Building Cluster Case used in Paper
-You can go to src/env_list.txt to copy and paste a created environment for RL implementation with defined parameters.
+### 🧩 Workflow of how RL agent interacts with MuFlex environment:
 
 ```python
 
-from src.env import MuFlex
-fmu_configs = [{'io_type': 'OfficeS',
-  'path': 'C:/Users/Administrator/Desktop/MuFlex/models/small_office/small_baseline_v1.fmu'},
- {'io_type': 'OfficeS',
-  'path': 'C:/Users/Administrator/Desktop/MuFlex/models/small_office/small_baseline_v2.fmu'},
- {'io_type': 'OfficeM',
-  'path': 'C:/Users/Administrator/Desktop/MuFlex/models/medium_office/medium_baseline_v1.fmu'},
- {'io_type': 'OfficeM',
-  'path': 'C:/Users/Administrator/Desktop/MuFlex/models/medium_office/medium_baseline_v2.fmu'}]
-env = MuFlex(fmu_configs=fmu_configs, sim_days=1, start_date=201, step_size=900, action_type='continuous', include_hour=True, reward_mode='default')
-obs, info = env.reset()
-done = False
-while not done:
-    action = env.action_space.sample()
-    obs, reward, terminated, truncated, info = env.step(action)
-    done = terminated or truncated
-env.close()
+from src.env_wrapper import MuFlex                            ⎫
+fmu_configs = [{'io_type': 'OfficeS', 'path': '...'},         ⎪
+               {'io_type': 'OfficeS', 'path': '...'},         ⎪
+               {'io_type': 'OfficeM', 'path': '...'},         ⎪
+               {'io_type': 'OfficeM', 'path': '...'}]         ⎪
+                                                              ⎪  
+env = MuFlex(                                                 ⎪  This setup can be configured via `MuFlex.py` GUI ▶️
+    fmu_configs=fmu_configs,                                  ⎪  (GUIs introduced in the next Section)
+    sim_days=1,                                               ⎪  and will be saved to `src/env_list.txt` for easy reuse
+    start_date=201,                                           ⎪
+    step_size=900,                                            ⎪
+    action_type='continuous',                                 ⎪
+    include_hour=True,                                        ⎪
+    reward_mode='example_reward'                              ⎪
+)                                                             ⎭
+  
+from stable_baselines3 import SAC
+model = SAC("MlpPolicy", env = MuFlex)
+model.learn(total_timesteps=200_000)
+model.save()
 
+env.close()
 ```
+### 🧩 Customize Reward Functions
+
+MuFlex supports plug-and-play reward scripts. To add your own reward:
+1. Create a new script in `algo/reward/` named `xxx_reward.py`
+2. Set `reward_mode="xxx_reward"` when creating the environment
+
+For example, the paper uses:
+- `algo/reward/demand_limiting_reward.py`  →  `reward_mode="demand_limiting_reward"`
+
+### 🧩 Observation & Action Spaces (Auto-loaded)
+
+Once you select the simulated models (i.e., `fmu_configs` with `io_type` + `path`), MuFlex will **automatically build** the RL **action space** and **observation (state) space** based on the I/O definitions stored in `config/fmu_config.json`.
+
+- **Action space** is constructed by concatenating all FMU **INPUTS**:
+  - `action_type="continuous"` → `spaces.Box(low=-1, high=1, shape=(total_inputs,))`
+  - `action_type="discrete"` → `spaces.MultiDiscrete(dims_per_input)`
+- **Observation (state) space** is constructed by concatenating all FMU **OUTPUTS** (then normalized to `[0, 1]`).
+
+#### ⏰ `include_hour` adds +2 dimensions
+If `include_hour=True`, MuFlex prepends **two time features** to the observation vector:
+- `sin(hour_of_day)` and `cos(hour_of_day)` (both naturally in `[-1, 1]`)
+
+So the final observation dimension becomes:
+
+- `obs_dim = total_outputs` (if `include_hour=False`)
+- `obs_dim = total_outputs + 2` (if `include_hour=True`)
+
 ---
 
+---
+
+## 🖥️ GUIs Overview (Two Tools)
+
+**MuFlex** provides two lightweight GUIs:
+
+- **GUI 1 — `MuFlex.py`**:  **quickly manage RL environments** (create / save / delete), and to **run the baseline controller** for a fast check of model simulations using created environments.
+- **GUI 2 — `Add_FMU.py`**:  **register new model types** (define their inputs/outputs and bounds) so they can be used in MuFlex simulations.
+
+
+## 🖥️ GUI 1 — MuFlex.py (Envs Manager + Baseline Runner)
+
+▶️ `python MuFlex.py`
+
+### 🔌 Tab 1 - Create & Save RL Environment
+- Select FMU types (defined in `Add_FMU.py`) and provide FMU paths
+- Set simulation horizon (days, start day-of-year, step size)
+- Choose action type (`continuous` / `discrete`) and optionally enable `include_hour`
+- Choose reward mode (default or custom)
+- Name and save the environment (saved to `src/env_list.txt`)
+
+### 🔌 Tab 2 - Run Baseline Controller
+- Select a saved environment
+- Specify fixed baseline actions for each FMU
+- Optionally enable result saving and step logging
+- Run to verify the model runs correctly before RL training
+
+### 🔌 Tab 3 - Manage Environments
+- List saved environments
+- Delete outdated ones  
+  *(Note: the built-in `example` env is the one used in the paper.)*
+
+
+## 🖥️ GUI 2 — Add_FMU.py (Register New Models)
+
+▶️ `python Add_FMU.py`
+
+### What is an FMU “type”?
+A *type* is a template describing an FMU’s **input/output interface**.  
+FMUs with different variables (different I/O) should be registered as different types.
+
+### What you define (stored in `config/fmu_config.json`)
+- `INPUTS` / `OUTPUTS` – controllable inputs and observable outputs
+- `ob_base_low` / `ob_base_high` – output bounds for observation normalization
+- `dims` – discrete bins per input (for `action_type="discrete"`)
+- `intervals` – action step size (continuous actions snap to these intervals)
+- `base_mins` / `base_maxs` – physical min/max limits for each input
+
+### 🔌Tab 1 -  Browse existing types
+### 🔌Tab 2 - Add / edit / remove a type
+### 🔌Tab 3 - Save back to `config/fmu_config.json`
+
+---
+
+---
 ## 📚 Citation
 
-```
-Wu et al., “Name”
-Conference/Journal, Year.
-```
+If you use **MuFlex**, please cite our paper:
+
+**Wu Z, Korolija I, Tang R, _MuFlex: A Scalable, Physics-based Platform for Multi-Building Flexibility Analysis and Coordination_, Energy, https://doi.org/10.1016/j.energy.2026.140565**
+
+
+---
 
 ---
 
 ## 📝 License
 
-This project is released under the MIT License. See [LICENSE](LICENSE) for details.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+This project is released under the **MIT License**. See [`LICENSE`](LICENSE) for details.
 
 ---
 
-*Feel free to open issues, submit pull requests, or start a discussion. Happy Coding!* 🎉
+---
+
+### *Feel free to open issues, submit pull requests, or start a discussion. Happy Coding!* 🎉

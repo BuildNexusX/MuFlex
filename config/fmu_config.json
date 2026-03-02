@@ -84,7 +84,8 @@
       25,
       25,
       15
-    ]
+    ],
+    "category": "building"
   },
   "OfficeM": {
     "INPUTS": [
@@ -189,7 +190,8 @@
       15,
       15,
       15
-    ]
+    ],
+    "category": "building"
   },
   "test_fmu": {
     "INPUTS": [
@@ -252,6 +254,124 @@
       26,
       26,
       16
-    ]
+    ],
+    "category": "building"
+  },
+  "PV": {
+    "INPUTS": [
+      "shade"
+    ],
+    "OUTPUTS": [
+      "P_ac"
+    ],
+    "ob_base_low": [
+      0
+    ],
+    "ob_base_high": [
+      4000000
+    ],
+    "dims": [
+      21
+    ],
+    "intervals": [
+      0.05
+    ],
+    "base_mins": [
+      0.0
+    ],
+    "base_maxs": [
+      1.0
+    ],
+    "category": "pv"
+  },
+  "Energym_House": {
+    "INPUTS": [
+      "u"
+    ],
+    "OUTPUTS": [
+      "weaBus.HDifHor",
+      "weaBus.HDirNor",
+      "weaBus.HGloHor",
+      "weaBus.HHorIR",
+      "sunRad.y",
+      "sunHea.Q_flow",
+      "preHea.Q_flow",
+      "heaPum.P",
+      "heaPum.QCon_flow",
+      "heaPum.QEva_flow",
+      "heaPum.COP",
+      "heaPum.COPCar",
+      "heaPum.TConAct",
+      "heaPum.TEvaAct",
+      "sla.QTot",
+      "sla.m_flow",
+      "sla.heatPortEmb[1].T",
+      "temRet.T",
+      "temSup.T",
+      "TOut.T",
+      "temRoo.T",
+      "y"
+    ],
+    "ob_base_low": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      273.15,
+      273.15,
+      0,
+      0,
+      273.15,
+      273.15,
+      273.15,
+      253.15,
+      263.15,
+      263.15
+    ],
+    "ob_base_high": [
+      1000,
+      1000,
+      1000,
+      1000,
+      1000,
+      100,
+      100,
+      100,
+      100,
+      100,
+      20,
+      20,
+      343.15,
+      343.15,
+      100,
+      10,
+      343.15,
+      353.15,
+      353.15,
+      343.15,
+      343.15,
+      343.15
+    ],
+    "dims": [
+      21
+    ],
+    "intervals": [
+      0.05
+    ],
+    "base_mins": [
+      0.0
+    ],
+    "base_maxs": [
+      1.0
+    ],
+    "category": "building"
   }
 }

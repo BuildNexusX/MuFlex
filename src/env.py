@@ -8,8 +8,7 @@ from pyfmi import load_fmu
 import gymnasium as gym
 from gymnasium import spaces
 from src.config import load_fmu_config
-from algo.default_reward import compute_reward as default_compute_reward
-from algo.custom_reward import compute_reward as custom_compute_reward
+from src.reward_registry import resolve_reward_function
 
 # -----------------------------------------------------------------------------
 # Colour‑helper print functions -------------------------------------------------
@@ -41,10 +40,16 @@ def _load_io_definitions():
             "intervals": cfg["intervals"],
             "base_mins": cfg["base_mins"],
             "base_maxs": cfg["base_maxs"],
+            "category": cfg.get("category", "building"),
         }
     return io_defs
 
 IO_DEFINITIONS = _load_io_definitions()
+
+def _format_category_label(category: str) -> str:
+    """Return a label for a given FMU category."""
+    return "PV" if category.lower() == "pv" else "Building"
+
 
 # -----------------------------------------------------------------------------
 # Gymnasium environment --------------------------------------------------------
@@ -75,18 +80,12 @@ class MuFlex(gym.Env):
     action_type : {'continuous', 'discrete'}, default='continuous'
         * continuous → actions in ``[-1, 1]`` mapped linearly to physical range.
         * discrete   → integer bins defined in ``dims_*`` tables.
-    max_total_hvac_power : float, default=140_000.0
-        Cluster‑level power cap [W].  Exceeding it incurs a quadratic penalty.
-    reward_mode : {'default', 'custom'}, default='default'
-        Select the built-in reward or the user-defined function in
-        ``algo/custom_reward.py``.
+    reward_mode : str, default='default'
+        Reward mode name. Supports built-ins (``default``, ``custom``) and
+        user scripts from ``algo/reward/<mode>.py``.
     save_results : bool, default=False
         Persist per‑step I/O and reward traces to ``./simulation_data_<timestamp>/``.
     """
-
-    # ---------------------------------------------------------------------
-    # Construction ---------------------------------------------------------
-    # ---------------------------------------------------------------------
 
     def __init__(
         self,
@@ -96,10 +95,6 @@ class MuFlex(gym.Env):
         step_size: int = 900,
         log_level: int = 7,
         action_type: str = "continuous",
-        max_total_hvac_power: float = 140_000.0,
-        hvac_weight: float = 0.5,
-        temp_weight: float = 0.1,
-        max_power_weight: float = 2.0,
         reward_mode: str = "default",
         save_results: bool = False,
         include_hour: bool = True,
@@ -112,19 +107,12 @@ class MuFlex(gym.Env):
         self.step_size = step_size
         self.log_level = log_level
         self.action_type = action_type.lower()
-        self.max_total_hvac_power = max_total_hvac_power
         self.save_results = save_results
         self.include_hour = include_hour
         self.reward_list = []
-        self.hvac_weight = hvac_weight
-        self.temp_weight = temp_weight
-        self.max_power_weight = max_power_weight
         self.reward_mode = reward_mode
         import types
-        if reward_mode == "custom":
-            reward_function = custom_compute_reward
-        else:
-            reward_function = default_compute_reward
+        reward_function = resolve_reward_function(reward_mode)
         self.compute_reward = types.MethodType(reward_function, self)
 
         # Folder for optional result export --------------------------------------
@@ -162,16 +150,29 @@ class MuFlex(gym.Env):
         self.intervals_list = []
         self.base_mins_list = []
         self.base_maxs_list = []
+        self.fmu_categories = []      # list[str]
+        self.fmu_labels = []          # list[str]
+        self._category_counts = {}    # category -> count
 
         for fmu_index, one_config in enumerate(self.fmu_configs):
             fmu_path = one_config["path"]
             io_type_name = one_config["io_type"]
+            category_name = IO_DEFINITIONS[io_type_name].get("category", "building")
+            self.fmu_categories.append(category_name)
+            category_count = self._category_counts.get(category_name, 0) + 1
+            self._category_counts[category_name] = category_count
+            label_prefix = _format_category_label(category_name)
+            fmu_label = f"{label_prefix} FMU #{category_count}"
+            self.fmu_labels.append(fmu_label)
 
             # --- Load and initialise the FMU --------------------------------
-            blue_print(f"[Init] Loading FMU #{fmu_index + 1}: io_type = {io_type_name}, path = {fmu_path}")
+            blue_print(
+                f"[Init] Loading {self.fmu_labels[fmu_index]}: "
+                f"io_type = {io_type_name}, path = {fmu_path}"
+            )
             fmu_object = load_fmu(fmu_path, kind="cs", log_level=self.log_level)
             blue_print(
-                f"[Init] Initializing FMU #{fmu_index + 1}, time range = "
+                f"[Init] Initializing {self.fmu_labels[fmu_index]}, time range = "
                 f"({self.start_time_seconds}, {self.stop_time_seconds})"
             )
             fmu_object.initialize(
@@ -206,10 +207,6 @@ class MuFlex(gym.Env):
         self.penalty = 20.0  # legacy coefficient (unused in current formula)
         # Comfort band per building type (°C)
         self.temp_interval = [(23, 25)] * self.num_fmus
-        # Last‑step component penalties stored for logging.
-        self.last_hvac_penalty = 0.0
-        self.last_temp_penalty = 0.0
-        self.last_maxpower_penalty = 0.0
 
     # ---------------------------------------------------------------------
     # Gym Space builders -------------------------------------------------------
@@ -234,21 +231,24 @@ class MuFlex(gym.Env):
         total_output_dimensions = sum(len(outputs) for outputs in self.output_names)
 
         # Observation layout:
-        #   if include_hour: index 0 -> hour of day in [0, 23]
+        #   if include_hour: indices [0,1] -> sin/cos hour-of-day encoding in [-1, 1]
         #   following indices -> concatenated raw FMU outputs (per FMU order)
         #
-        # Note: There is no binary tail element; all features are either hour (integer in [0,23])
-        # or continuous outputs. Bounds come from IO_DEFINITIONS.
+        # Note: There is no binary tail element; all features are either cyclical
+        # hour encoding or continuous outputs. Bounds come from IO_DEFINITIONS.
 
-        observation_dimension = total_output_dimensions + (1 if self.include_hour else 0)
+        time_feature_dims = 2 if self.include_hour else 0
+        observation_dimension = total_output_dimensions + time_feature_dims
+        # Raw (physical) bounds used internally for normalization.
         self.obs_low = np.zeros(observation_dimension, dtype=np.float32)
         self.obs_high = np.ones(observation_dimension, dtype=np.float32)
-        self.obs_high[0] = 23 # hour ∈ [0, 23]
 
         index_offset = 0
         if self.include_hour:
-            self.obs_high[0] = 23  # hour ∈ [0, 23]
-            index_offset = 1
+            # sin/cos components are naturally in [-1, 1]
+            self.obs_low[0:2] = -1.0
+            self.obs_high[0:2] = 1.0
+            index_offset = 2
         for one_config in self.fmu_configs:
             io_type_name = one_config["io_type"]
             local_low = IO_DEFINITIONS[io_type_name]["ob_base_low"]
@@ -258,9 +258,11 @@ class MuFlex(gym.Env):
             self.obs_high[index_offset : index_offset + length] = local_high
             index_offset += length
 
-        # Final element is binary; bounds already [0,1].
+        # Public observation space matches returned (normalized) observations.
+        normalized_low = np.zeros(observation_dimension, dtype=np.float32)
+        normalized_high = np.ones(observation_dimension, dtype=np.float32)
         self.observation_space = spaces.Box(
-            low=self.obs_low, high=self.obs_high, shape=(observation_dimension,), dtype=np.float32
+            low=normalized_low, high=normalized_high, shape=(observation_dimension,), dtype=np.float32
         )
 
     # ---------------------------------------------------------------------
@@ -313,7 +315,7 @@ class MuFlex(gym.Env):
                 for dim_index, val in enumerate(sub_action):
                     if not (0 <= val < dims[dim_index]):
                         raise ValueError(
-                            f"Discrete action out-of-bounds for FMU {fmu_idx}, "
+                            f"Discrete action out-of-bounds for {self.fmu_labels[fmu_idx]}, "
                             f"dimension {dim_index}: {val}"
                         )
                 start = end
@@ -349,19 +351,11 @@ class MuFlex(gym.Env):
         next_obs = self.scale_observation(raw_next_observation)
         reward_value = self.compute_reward(next_obs)
 
-        # Track diagnostics for potential offline inspection.
-        self.reward_list.append(
-            {
-                "Step": self.current_step,
-                "TotalReward": reward_value,
-                "HVAC_penalty": self.last_hvac_penalty,
-                "Temperature_penalty": self.last_temp_penalty,
-                "MaxPower_penalty": self.last_maxpower_penalty,
-            }
-        )
+        # Track per-step reward for offline inspection.
+        self.reward_list.append({"Step": self.current_step, "TotalReward": reward_value})
 
         # Optional verbose printout at selected steps.
-        if self.current_step in [1,2,3,4,5]:
+        if self.current_step % 50 == 0:
             self._print_step_info(action, unscaled_actions, raw_next_observation, next_obs, reward_value)
 
         # ------------------------------------------------------------------
@@ -384,13 +378,13 @@ class MuFlex(gym.Env):
         green_print(f"[Step Info] Step: {self.current_step}")
         green_print(f"  Global Action (raw input): {action}")
         green_print(f"  Global Action (physical values): {unscaled_actions}")
-        offset = 1
+        offset = 2 if self.include_hour else 0
         for i in range(self.num_fmus):
             out_len = len(self.output_names[i])
             fmux_raw_output = raw_obs_vals[offset : offset + out_len]
             offset += out_len
-            green_print(f"  FMU {i + 1} raw output: {fmux_raw_output}")
-            green_print(f"  FMU {i + 1} physical action: {unscaled_actions[i]}")
+            green_print(f"  {self.fmu_labels[i]} raw output: {fmux_raw_output}")
+            green_print(f"  {self.fmu_labels[i]} physical action: {unscaled_actions[i]}")
         green_print(f"  Next state (normalized): {next_obs}")
         green_print(f"  Reward: {reward}")
 
@@ -433,7 +427,10 @@ class MuFlex(gym.Env):
                     range_val = maximum_val - minimum_val
                     real_val = minimum_val + range_val * scaled_01
                     act_size = intervals_array[dim_index]
-                    rounded_val = round(real_val / act_size) * act_size
+                    # Snap on a grid anchored at the minimum bound, then clamp
+                    # back into [min, max] to avoid floating-point overshoot.
+                    snapped_val = minimum_val + round((real_val - minimum_val) / act_size) * act_size
+                    rounded_val = min(maximum_val, max(minimum_val, snapped_val))
                     temp_actions.append(rounded_val)
                 results_list.append(temp_actions)
                 start += length
@@ -452,7 +449,7 @@ class MuFlex(gym.Env):
 
     def get_observation(self, target_time):
         """Assemble *unnormalised* observation array for a given hour-of-the-day."""
-        total_observation_length = (1 if self.include_hour else 0)
+        total_observation_length = (2 if self.include_hour else 0)
         for outputs in self.output_names:
             total_observation_length += len(outputs)
         observation_array = np.zeros(total_observation_length, dtype=np.float32)
@@ -460,8 +457,10 @@ class MuFlex(gym.Env):
         index_offset = 0
         if self.include_hour:
             hour_in_day = int((target_time - self.start_time_seconds) // 3600) % 24
-            observation_array[0] = hour_in_day
-            index_offset = 1
+            angle = 2.0 * np.pi * (hour_in_day / 24.0)
+            observation_array[0] = np.sin(angle)
+            observation_array[1] = np.cos(angle)
+            index_offset = 2
 
         # FMU outputs ----------------------------------------------
         for fmu_index, record_dataframe in enumerate(self.record_dataframes):
@@ -491,7 +490,7 @@ class MuFlex(gym.Env):
         for i, df in enumerate(self.record_dataframes):
             file_path = os.path.join(output_folder, f"fmu_{i + 1}_data.xlsx")
             df.to_excel(file_path, index_label="Step")
-            blue_print(f"Saved FMU {i + 1} data to: {file_path}")
+            blue_print(f"Saved {self.fmu_labels[i]} data to: {file_path}")
 
     def save_reward_data(self, output_folder=None):
         """Write stepwise reward history to an Excel file."""
@@ -512,9 +511,9 @@ class MuFlex(gym.Env):
         for fmu_index, fmu_object in enumerate(self.fmus):
             try:
                 fmu_object.terminate()
-                blue_print(f"[Close] FMU #{fmu_index + 1} terminated successfully.")
+                blue_print(f"[Close] {self.fmu_labels[fmu_index]} terminated successfully.")
             except Exception as e:
-                blue_print(f"[Close] FMU #{fmu_index + 1} termination failed: {e}")
+                blue_print(f"[Close] {self.fmu_labels[fmu_index]} termination failed: {e}")
         blue_print("[Close] All FMUs have been processed.")
         if self.save_results:
             self.save_fmu_data()

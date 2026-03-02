@@ -1,5 +1,10 @@
 """Reward calculation for MuFlex environments."""
 
+HVAC_WEIGHT = 0.5
+TEMP_WEIGHT = 0.1
+MAX_POWER_WEIGHT = 2.0
+MAX_TOTAL_HVAC_POWER = 103_500.0
+
 def green_print(*args, **kwargs):
     """Print helper that highlights debug lines in green."""
     print("\033[32m", *args, "\033[0m", **kwargs)
@@ -18,11 +23,6 @@ def compute_reward(self, scaled_observation):
     max_power_penalty_value : float
         Quadratic penalty if cap exceeded; small bonus (‑0.5) for staying
         below cap during DR window.
-
-    Notes
-    -----
-    The individual penalties are weighted using coefficients stored on the
-    environment instance (``self.hvac_weight`` etc.).
     """
     hvac_penalty_value = 0.0
     temperature_penalty_value = 0.0
@@ -41,14 +41,14 @@ def compute_reward(self, scaled_observation):
     is_work_time = (hour_now > 8 or (hour_now == 8 and minute_now >= 15)) and (
         hour_now < 18 or (hour_now == 18 and minute_now == 0)
     )
-    grid_service_time = (hour_now > 7 or (hour_now == 7 and minute_now >= 15)) and (
+    grid_service_time = (hour_now > 8 or (hour_now == 8 and minute_now >= 15)) and (
         hour_now < 18 or (hour_now == 18 and minute_now == 0)
     )
 
     # ------------------------------------------------------------------
     # 1. Aggregate HVAC power -----------------------------------------
     # ------------------------------------------------------------------
-    index_offset = 1
+    index_offset = 2 if getattr(self, "include_hour", False) else 0
     total_hvac_power_actual = 0.0
     for fmu_index, cfg in enumerate(self.fmu_configs):
         outputs = self.output_names[fmu_index]
@@ -60,7 +60,7 @@ def compute_reward(self, scaled_observation):
             coil_idx = outputs.index("coilPower")
             fan_idx = outputs.index("fanPower")
             total_hvac_power_actual += fmu_raw_vals[coil_idx] + fmu_raw_vals[fan_idx]
-        else:
+        elif io_type == "OfficeM":
             coil_bot_idx = outputs.index("coilPower_bot")
             coil_mid_idx = outputs.index("coilPower_mid")
             coil_top_idx = outputs.index("coilPower_top")
@@ -75,13 +75,17 @@ def compute_reward(self, scaled_observation):
                 + fmu_raw_vals[fan_mid_idx]
                 + fmu_raw_vals[fan_top_idx]
             )
-    hvac_penalty_value = total_hvac_power_actual / self.max_total_hvac_power
+        else:
+            # Non-building FMUs (e.g. PV) do not expose HVAC outputs and
+            # should not contribute to the HVAC penalty term.
+            continue
+    hvac_penalty_value = total_hvac_power_actual / MAX_TOTAL_HVAC_POWER
 
     # ------------------------------------------------------------------
     # 2. Thermal comfort ----------------------------------------------
     # ------------------------------------------------------------------
     if is_work_time:
-        index_offset_for_temp = 1
+        index_offset_for_temp = 2 if getattr(self, "include_hour", False) else 0
         for fmu_index, cfg in enumerate(self.fmu_configs):
             outputs = self.output_names[fmu_index]
             out_len = len(outputs)
@@ -112,8 +116,8 @@ def compute_reward(self, scaled_observation):
     # ------------------------------------------------------------------
     # 3. Power limit penalty/bonus ---------------------------------------
     # ------------------------------------------------------------------
-    if total_hvac_power_actual > self.max_total_hvac_power:
-        max_power_penalty_value = (1 * hvac_penalty_value) ** 2
+    if total_hvac_power_actual > MAX_TOTAL_HVAC_POWER:
+        max_power_penalty_value = (2 * hvac_penalty_value) ** 2
     else:
         max_power_penalty_value = -0.5 if grid_service_time else 0.0
 
@@ -124,9 +128,9 @@ def compute_reward(self, scaled_observation):
 
     # Weighted sum → *negative reward* (penalties).
     total_penalty = (
-        self.hvac_weight * hvac_penalty_value
-        + self.temp_weight * temperature_penalty_value
-        + self.max_power_weight * max_power_penalty_value
+        HVAC_WEIGHT * hvac_penalty_value
+        + TEMP_WEIGHT * temperature_penalty_value
+        + MAX_POWER_WEIGHT * max_power_penalty_value
     )
     final_reward = -total_penalty
     if self.current_step in [32]:

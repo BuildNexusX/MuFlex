@@ -1,0 +1,3 @@
+python scalability_test.py --list-envs
+python scalability_test.py --env-name scal20_a
+python scalability_test.py --env-name all

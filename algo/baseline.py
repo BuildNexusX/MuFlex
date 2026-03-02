@@ -16,11 +16,20 @@ def get_physical_action(io_type: str) -> list[float]:
 
     The returned list contains *physical* set‑points in the order expected by
     the environment.
+
+    Notes
+    -----
+    PV FMUs expose a single ``shade`` input within ``[0, 1]``.  A default value
+    of ``1.0`` (no shading) keeps generation unconstrained.
     """
     if io_type == "OfficeS":
-        return [25, 25, 25, 25, 25, 10]
+        return [25, 25, 25, 25, 25, 15]
     if io_type == "OfficeM":
-        return [25, 25, 25, 10, 10, 10]
+        return [25, 25, 25, 15, 15, 15]
+    if io_type == "Energym_House":
+        return [0.5]
+    if io_type.lower() == "pv":
+        return [1.0]
     raise ValueError(f"Unknown io_type: {io_type}")
 
 
@@ -40,9 +49,7 @@ def run_baseline(
     sim_days: int = 1,
     start_date: int = 201,
     step_size: int = 900,
-    max_total_hvac_power: float = 103_500.0,
-    reward_weights=(0.5, 0.1, 2.0),
-    reward_mode: str = "default",
+    reward_mode: str = "example_reward",
     save_results: bool = False,
     print_steps: bool = False,
     max_steps: Optional[int] = None,
@@ -58,8 +65,6 @@ def run_baseline(
         Mapping of FMU paths and their ``io_type`` identifiers.
     sim_days, start_date, step_size : int
         Simulation horizon parameters forwarded to :class:`~src.env.MuFlex`.
-    reward_weights : tuple[float, float, float]
-        Coefficients for HVAC, temperature and max power penalties.
     physical_actions : list[list[float]], optional
         Explicit physical actions per FMU; defaults to nominal set‑points.
     """
@@ -70,10 +75,6 @@ def run_baseline(
         step_size=step_size,
         log_level=7,
         action_type=action_type,
-        max_total_hvac_power=max_total_hvac_power,
-        hvac_weight=reward_weights[0],
-        temp_weight=reward_weights[1],
-        max_power_weight=reward_weights[2],
         reward_mode=reward_mode,
         save_results=save_results,
         include_hour=include_hour,
@@ -139,8 +140,8 @@ def run_baseline(
 def test_run_continuous():
     """Quick smoke test using four bundled FMUs."""
     project_root = Path(__file__).resolve().parent.parent
-    small_office_dir = project_root / "models" / "small_office"
-    medium_office_dir = project_root / "models" / "medium_office"
+    small_office_dir = project_root / "models_15min" / "small_office"
+    medium_office_dir = project_root / "models_15min" / "medium_office"
     fmu_configs = [
         {"path": str(small_office_dir / "small_baseline_v1.fmu"), "io_type": "OfficeS"},
         {"path": str(small_office_dir / "small_baseline_v2.fmu"), "io_type": "OfficeS"},
@@ -150,10 +151,9 @@ def test_run_continuous():
 
     run_baseline(
         fmu_configs=fmu_configs,
-        sim_days=1,
-        start_date=201,
+        sim_days=55,
+        start_date=189,
         step_size=900,
-        max_total_hvac_power=103_500.0,
         save_results=True,
     )
 
