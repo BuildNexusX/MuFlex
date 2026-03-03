@@ -79,6 +79,10 @@ It includes:
 All experiments use the weather files in:
 - `models/weather/`
 
+### ✅ Compatibility Information
+MuFlex has been tested with all models (FMUs) provided in the `models/` directory of this repository.
+These FMUs are exported from EnergyPlus and Modelica building models.
+
 ---
 ## 🤖 RL Implementation
 
