@@ -125,8 +125,8 @@ class MuFlex(gym.Env):
         # Time axis construction
         # ------------------------------------------------------------------
         self.start_time_seconds = 86_400 * (self.start_date - 1)
-        self.stop_time_seconds = self.start_time_seconds + self.step_size * 4 * 24 * self.sim_days
-        # Current formula assumes 900 s (15 min) steps via (4 * 24 * sim_days).
+        self.stop_time_seconds = self.start_time_seconds + 86_400 * self.sim_days
+        # One simulation day is always 86,400 seconds, independent of step size.
         self.time_steps = np.arange(
             self.start_time_seconds,
             self.stop_time_seconds + self.step_size,
