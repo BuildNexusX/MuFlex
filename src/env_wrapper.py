@@ -19,15 +19,9 @@ class MuFlex(gym.Env):
         step_size: int = 900,
         log_level: int = 7,
         action_type: str = "continuous",
-        max_total_hvac_power: float = 140_000.0,
-        hvac_weight: float = 0.5,
-        temp_weight: float = 0.1,
-        max_power_weight: float = 2.0,
         reward_mode: str = "default",
         save_results: bool = False,
         include_hour: bool = True,
-        print_step_info: bool = False,
-        print_step_interval: int = 4,
         double_reset: bool = False,
     ):
         super().__init__()
@@ -40,16 +34,9 @@ class MuFlex(gym.Env):
         self.step_size = step_size
         self.log_level = log_level
         self.action_type = action_type.lower()
-        self.max_total_hvac_power = max_total_hvac_power
-
-        self.hvac_weight = hvac_weight
-        self.temp_weight = temp_weight
-        self.max_power_weight = max_power_weight
         self.reward_mode = reward_mode
 
         self.include_hour = include_hour
-        self.print_step_info = bool(print_step_info)
-        self.print_step_interval = int(print_step_interval)
         self.double_reset = bool(double_reset)
 
         self._save_results = bool(save_results)
@@ -96,25 +83,11 @@ class MuFlex(gym.Env):
 
     def _build_observation_space(self):
         total_output_dims = sum(len(outs) for outs in self._output_names_list)
-        observation_dim = total_output_dims + (1 if self.include_hour else 0)
+        observation_dim = total_output_dims + (2 if self.include_hour else 0)
 
+        # MuFlexCore returns normalized observations in [0, 1].
         obs_low = np.zeros(observation_dim, dtype=np.float32)
         obs_high = np.ones(observation_dim, dtype=np.float32)
-
-        idx = 0
-        if self.include_hour:
-            obs_low[0] = 0
-            obs_high[0] = 23
-            idx = 1
-
-        for cfg in self.fmu_configs:
-            io_type = cfg["io_type"]
-            local_low = IO_DEFINITIONS[io_type]["ob_base_low"]
-            local_high = IO_DEFINITIONS[io_type]["ob_base_high"]
-            L = len(local_low)
-            obs_low[idx: idx + L] = local_low
-            obs_high[idx: idx + L] = local_high
-            idx += L
 
         self.observation_space = spaces.Box(
             low=obs_low, high=obs_high, shape=(observation_dim,), dtype=np.float32
@@ -128,15 +101,9 @@ class MuFlex(gym.Env):
             step_size=self.step_size,
             log_level=self.log_level,
             action_type=self.action_type,
-            max_total_hvac_power=self.max_total_hvac_power,
-            hvac_weight=self.hvac_weight,
-            temp_weight=self.temp_weight,
-            max_power_weight=self.max_power_weight,
             reward_mode=self.reward_mode,
             save_results=self._save_results,
             include_hour=self.include_hour,
-            print_step_info=self.print_step_info,
-            print_step_interval=self.print_step_interval,
         )
 
     def reset(self, seed=None, options=None):
