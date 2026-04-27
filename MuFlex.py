@@ -270,11 +270,38 @@ class MuFlexGUI(tk.Tk):
         )
         self.include_hour_cb.grid(row=1, column=0, columnspan=2, sticky="w")
 
+        self.include_day_of_year_var = tk.BooleanVar(value=True)
+        self.include_day_of_year_cb = tk.Checkbutton(
+            self.space_frame,
+            text="Include day of year (observation)",
+            variable=self.include_day_of_year_var,
+            bg="white",
+        )
+        self.include_day_of_year_cb.grid(row=2, column=0, columnspan=2, sticky="w")
+
+        self.include_episode_progress_var = tk.BooleanVar(value=True)
+        self.include_episode_progress_cb = tk.Checkbutton(
+            self.space_frame,
+            text="Include episode progress (observation)",
+            variable=self.include_episode_progress_var,
+            bg="white",
+        )
+        self.include_episode_progress_cb.grid(row=3, column=0, columnspan=2, sticky="w")
+
+        self.normalize_observation_var = tk.BooleanVar(value=True)
+        self.normalize_observation_cb = tk.Checkbutton(
+            self.space_frame,
+            text="Normalize observation",
+            variable=self.normalize_observation_var,
+            bg="white",
+        )
+        self.normalize_observation_cb.grid(row=4, column=0, columnspan=2, sticky="w")
+
         self.space_confirmed = False
         self.action_dim_label = tk.Label(self.space_frame, text="", bg="white", justify="left")
-        self.action_dim_label.grid(row=2, column=0, columnspan=2, sticky="w")
+        self.action_dim_label.grid(row=5, column=0, columnspan=2, sticky="w")
         self.obs_dim_label = tk.Label(self.space_frame, text="", bg="white", justify="left")
-        self.obs_dim_label.grid(row=3, column=0, columnspan=2, sticky="w")
+        self.obs_dim_label.grid(row=6, column=0, columnspan=2, sticky="w")
         self.inputs_combo = None
         self.outputs_combo = None
 
@@ -284,12 +311,12 @@ class MuFlexGUI(tk.Tk):
         self.space_confirm_btn = tk.Button(
             self.space_frame, text="Confirm", command=self.confirm_spaces, bg="white", width=10
         )
-        self.space_confirm_btn.grid(row=6, column=0, pady=2)
+        self.space_confirm_btn.grid(row=9, column=0, pady=2)
 
         self.space_reset_btn = tk.Button(
             self.space_frame, text="Reset", command=self.reset_spaces, bg="white", state="disabled", width=10
         )
-        self.space_reset_btn.grid(row=6, column=1, pady=2)
+        self.space_reset_btn.grid(row=9, column=1, pady=2)
 
         # ====== Reward Function ======
         self.reward_section = tk.LabelFrame(content, text="Reward Function", bg="white", labelanchor="n")
@@ -392,8 +419,48 @@ class MuFlexGUI(tk.Tk):
             self.env_menu.config(state="disabled")
         self.env_menu.grid(row=0, column=1, sticky="w")
 
+        self.run_settings_frame = tk.LabelFrame(run_frame, text="Run Settings", bg="white", labelanchor="n")
+        self.run_settings_frame.grid(row=1, column=0, columnspan=2, pady=5, sticky="ew")
+
         self.save_results_var = tk.BooleanVar(value=False)
-        tk.Checkbutton(run_frame, text="Save results", variable=self.save_results_var, bg="white").grid(row=1, column=0, sticky="w")
+        tk.Checkbutton(
+            self.run_settings_frame,
+            text="Save results",
+            variable=self.save_results_var,
+            bg="white",
+        ).grid(row=0, column=0, columnspan=2, sticky="w")
+
+        self.max_steps_var = tk.StringVar(value="")
+        tk.Label(self.run_settings_frame, text="Max steps", bg="white").grid(row=1, column=0, sticky="e", padx=(0, 5))
+        tk.Entry(self.run_settings_frame, textvariable=self.max_steps_var, width=10, justify="center").grid(row=1, column=1, sticky="w")
+
+        self.rl_control_window_only_var = tk.BooleanVar(value=True)
+        tk.Checkbutton(
+            self.run_settings_frame,
+            text="RL control window only",
+            variable=self.rl_control_window_only_var,
+            bg="white",
+        ).grid(row=2, column=0, columnspan=2, sticky="w")
+
+        self.office_hour_start_var = tk.StringVar(value="08:00")
+        tk.Label(self.run_settings_frame, text="Office hour start", bg="white").grid(row=3, column=0, sticky="e", padx=(0, 5))
+        tk.Entry(self.run_settings_frame, textvariable=self.office_hour_start_var, width=10, justify="center").grid(row=3, column=1, sticky="w")
+
+        self.office_hour_end_var = tk.StringVar(value="18:00")
+        tk.Label(self.run_settings_frame, text="Office hour end", bg="white").grid(row=4, column=0, sticky="e", padx=(0, 5))
+        tk.Entry(self.run_settings_frame, textvariable=self.office_hour_end_var, width=10, justify="center").grid(row=4, column=1, sticky="w")
+
+        self.step_info_print_interval_var = tk.StringVar(value="10")
+        tk.Label(self.run_settings_frame, text="Step info print interval", bg="white").grid(row=5, column=0, sticky="e", padx=(0, 5))
+        tk.Entry(
+            self.run_settings_frame,
+            textvariable=self.step_info_print_interval_var,
+            width=10,
+            justify="center",
+        ).grid(row=5, column=1, sticky="w")
+
+        self.run_settings_frame.grid_columnconfigure(0, weight=1)
+        self.run_settings_frame.grid_columnconfigure(1, weight=1)
 
         # Baseline action configuration ---------------------------------
         self.building_action_frame = tk.LabelFrame(run_frame, text="Building Actions", bg="white", labelanchor="n")
@@ -630,6 +697,9 @@ class MuFlexGUI(tk.Tk):
         self.space_confirmed = False
         self.action_type_menu.config(state="normal")
         self.include_hour_cb.config(state="normal")
+        self.include_day_of_year_cb.config(state="normal")
+        self.include_episode_progress_cb.config(state="normal")
+        self.normalize_observation_cb.config(state="normal")
         self.space_confirm_btn.config(state="normal")
         self.space_reset_btn.config(state="disabled")
         self._expand_section(self.fmu_content, self.fmu_collapsed_label)
@@ -659,6 +729,17 @@ class MuFlexGUI(tk.Tk):
         self.update_create_env_state()
 
     # ------------------ spaces ------------------
+    def _time_feature_names(self) -> list[str]:
+        """Return environment-provided time feature names."""
+        names: list[str] = []
+        if self.include_hour_var.get():
+            names.extend(["hour_sin", "hour_cos"])
+        if self.include_day_of_year_var.get():
+            names.extend(["day_of_year_sin", "day_of_year_cos"])
+        if self.include_episode_progress_var.get():
+            names.append("episode_progress")
+        return names
+
     def confirm_spaces(self) -> None:
         """Lock space settings and show preview."""
         try:
@@ -666,14 +747,21 @@ class MuFlexGUI(tk.Tk):
                 raise ValueError("FMUs not confirmed")
             self.action_type_menu.config(state="disabled")
             self.include_hour_cb.config(state="disabled")
+            self.include_day_of_year_cb.config(state="disabled")
+            self.include_episode_progress_cb.config(state="disabled")
+            self.normalize_observation_cb.config(state="disabled")
+
             if self.action_type_var.get() == "continuous":
                 action_dim = len(self.input_names)
                 self.action_dim_label.config(text=f"Action dim: {action_dim}")
             else:
                 action_dim = len(self.discrete_dims)
                 self.action_dim_label.config(text=f"Action dim: {action_dim} ({self.discrete_dims})")
-            obs_dim = len(self.output_names) + (1 if self.include_hour_var.get() else 0)
-            self.obs_dim_label.config(text=f"Observation dim: {obs_dim}")
+
+            time_features = self._time_feature_names()
+            obs_dim = len(self.output_names) + len(time_features)
+            obs_type = "normalized" if self.normalize_observation_var.get() else "raw"
+            self.obs_dim_label.config(text=f"Observation dim: {obs_dim} ({obs_type})")
 
             if self.inputs_combo:
                 self.inputs_combo.destroy()
@@ -684,16 +772,14 @@ class MuFlexGUI(tk.Tk):
             self.inputs_combo = ttk.Combobox(
                 self.space_frame, textvariable=self.inputs_var, values=self.input_names, state="readonly"
             )
-            self.inputs_combo.grid(row=4, column=0, columnspan=2, sticky="we")
+            self.inputs_combo.grid(row=7, column=0, columnspan=2, sticky="we")
 
-            outputs = self.output_names[:]
-            if self.include_hour_var.get():
-                outputs.append("hour_of_day")
+            outputs = time_features + self.output_names[:]
             self.outputs_var = tk.StringVar(value="Outputs")
             self.outputs_combo = ttk.Combobox(
                 self.space_frame, textvariable=self.outputs_var, values=outputs, state="readonly"
             )
-            self.outputs_combo.grid(row=5, column=0, columnspan=2, sticky="we")
+            self.outputs_combo.grid(row=8, column=0, columnspan=2, sticky="we")
 
             self.space_confirmed = True
             self.space_confirm_btn.config(state="disabled")
@@ -707,6 +793,9 @@ class MuFlexGUI(tk.Tk):
         self.space_confirmed = False
         self.action_type_menu.config(state="normal")
         self.include_hour_cb.config(state="normal")
+        self.include_day_of_year_cb.config(state="normal")
+        self.include_episode_progress_cb.config(state="normal")
+        self.normalize_observation_cb.config(state="normal")
         self.action_dim_label.config(text="")
         self.obs_dim_label.config(text="")
         if self.inputs_combo:
@@ -785,6 +874,9 @@ class MuFlexGUI(tk.Tk):
             step_size = self.step_size_var.get()
             action_type = self.action_type_var.get()
             include_hour = self.include_hour_var.get()
+            include_day_of_year = self.include_day_of_year_var.get()
+            include_episode_progress = self.include_episode_progress_var.get()
+            normalize_observation = self.normalize_observation_var.get()
             reward_mode = self.reward_mode.get()
 
             code = (
@@ -792,6 +884,9 @@ class MuFlexGUI(tk.Tk):
                 f"fmu_configs = {pprint.pformat(self.confirmed_fmu_configs)}\n"
                 f"env = MuFlex(fmu_configs=fmu_configs, sim_days={sim_days}, start_date={start_date}, "
                 f"step_size={step_size}, action_type='{action_type}', include_hour={include_hour}, "
+                f"include_day_of_year={include_day_of_year}, "
+                f"include_episode_progress={include_episode_progress}, "
+                f"normalize_observation={normalize_observation}, "
                 f"reward_mode='{reward_mode}')"
             )
 
@@ -972,7 +1067,19 @@ class MuFlexGUI(tk.Tk):
                 "reward_mode": params.get("reward_mode", "default"),
                 "action_type": params.get("action_type", "continuous"),
                 "include_hour": params.get("include_hour", True),
+                "include_day_of_year": params.get("include_day_of_year", True),
+                "include_episode_progress": params.get("include_episode_progress", True),
+                "normalize_observation": params.get("normalize_observation", True),
+                "rl_control_window_only": params.get("rl_control_window_only", True),
+                "office_hour_start": params.get("office_hour_start", "08:00"),
+                "office_hour_end": params.get("office_hour_end", "18:00"),
+                "step_info_print_interval": params.get("step_info_print_interval", 10),
             }
+
+            self.rl_control_window_only_var.set(bool(self.current_env_params["rl_control_window_only"]))
+            self.office_hour_start_var.set(str(self.current_env_params["office_hour_start"]))
+            self.office_hour_end_var.set(str(self.current_env_params["office_hour_end"]))
+            self.step_info_print_interval_var.set(str(self.current_env_params["step_info_print_interval"]))
 
             self.action_entries = []
             self.building_labels = []
@@ -1073,6 +1180,30 @@ class MuFlexGUI(tk.Tk):
             if not self.actions_confirmed:
                 raise ValueError("Baseline actions not confirmed")
 
+            max_steps_text = self.max_steps_var.get().strip()
+            if max_steps_text:
+                max_steps = int(max_steps_text)
+                if max_steps <= 0:
+                    raise ValueError("Max steps must be a positive integer")
+            else:
+                max_steps = None
+
+            office_hour_start = self.office_hour_start_var.get().strip()
+            office_hour_end = self.office_hour_end_var.get().strip()
+            hour_pattern = r"([01]\d|2[0-3]):([0-5]\d)"
+            if not re.fullmatch(hour_pattern, office_hour_start):
+                raise ValueError("Office hour start must use HH:MM format")
+            if not re.fullmatch(hour_pattern, office_hour_end):
+                raise ValueError("Office hour end must use HH:MM format")
+
+            step_info_print_interval_text = self.step_info_print_interval_var.get().strip()
+            if step_info_print_interval_text:
+                step_info_print_interval = int(step_info_print_interval_text)
+                if step_info_print_interval < 0:
+                    raise ValueError("Step info print interval must be >= 0")
+            else:
+                step_info_print_interval = 0
+
             params = dict(
                 fmu_configs=self.current_fmu_configs,
                 sim_days=self.current_env_params.get("sim_days", 1),
@@ -1080,8 +1211,16 @@ class MuFlexGUI(tk.Tk):
                 step_size=self.current_env_params.get("step_size", 900),
                 reward_mode=self.current_env_params.get("reward_mode", "default"),
                 save_results=self.save_results_var.get(),
+                max_steps=max_steps,
                 action_type=self.current_env_params.get("action_type", "continuous"),
                 include_hour=self.current_env_params.get("include_hour", True),
+                include_day_of_year=self.current_env_params.get("include_day_of_year", True),
+                include_episode_progress=self.current_env_params.get("include_episode_progress", True),
+                normalize_observation=self.current_env_params.get("normalize_observation", True),
+                rl_control_window_only=self.rl_control_window_only_var.get(),
+                office_hour_start=office_hour_start,
+                office_hour_end=office_hour_end,
+                step_info_print_interval=step_info_print_interval,
                 physical_actions=self.physical_actions,
             )
 

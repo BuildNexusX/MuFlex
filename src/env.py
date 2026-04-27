@@ -80,9 +80,8 @@ class MuFlex(gym.Env):
     """MuFlex - A Physics-based Platform for Multi-Building Flexibility Analysis and Coordination
 
     The environment instantiates one FMU per building and steps them in lock-step
-    every `step_size` seconds.  An agent receives *normalised observations* and
-    returns either continuous or discrete actions that are mapped to physical
-    set-points.
+    every `step_size` seconds.  An agent receives observations and returns either
+    continuous or discrete actions that are mapped to physical set-points.
 
     Parameters
     ----------
@@ -120,6 +119,9 @@ class MuFlex(gym.Env):
         reward_mode: str = "default",
         save_results: bool = False,
         include_hour: bool = True,
+        include_day_of_year: bool = True,
+        include_episode_progress: bool = True,
+        normalize_observation: bool = True,
         rl_control_window_only: bool = True,
         office_hour_start: str = "08:00",
         office_hour_end: str = "18:00",
@@ -135,6 +137,9 @@ class MuFlex(gym.Env):
         self.action_type = action_type.lower()
         self.save_results = save_results
         self.include_hour = include_hour
+        self.include_day_of_year = include_day_of_year
+        self.include_episode_progress = include_episode_progress
+        self.normalize_observation = normalize_observation
         self.rl_control_window_only = bool(rl_control_window_only)
         self.office_hour_start = str(office_hour_start)
         self.office_hour_end = str(office_hour_end)
@@ -261,28 +266,29 @@ class MuFlex(gym.Env):
             raise ValueError("Unsupported action_type")
 
     def build_observation_space(self):
-        """Construct normalised observation space [0,1]."""
+        """Construct the Gymnasium observation space."""
         total_output_dimensions = sum(len(outputs) for outputs in self.output_names)
-
-        # Observation layout:
-        #   if include_hour: indices [0,1] -> sin/cos hour-of-day encoding in [-1, 1]
-        #   following indices -> concatenated raw FMU outputs (per FMU order)
-        #
-        # Note: There is no binary tail element; all features are either cyclical
-        # hour encoding or continuous outputs. Bounds come from IO_DEFINITIONS.
-
-        time_feature_dims = 2 if self.include_hour else 0
+        time_feature_dims = self._time_feature_dims()
         observation_dimension = total_output_dimensions + time_feature_dims
-        # Raw (physical) bounds used internally for normalization.
+
+        # Raw bounds used internally for normalization.
         self.obs_low = np.zeros(observation_dimension, dtype=np.float32)
         self.obs_high = np.ones(observation_dimension, dtype=np.float32)
 
         index_offset = 0
         if self.include_hour:
-            # sin/cos components are naturally in [-1, 1]
             self.obs_low[0:2] = -1.0
             self.obs_high[0:2] = 1.0
             index_offset = 2
+        if self.include_day_of_year:
+            self.obs_low[index_offset:index_offset + 2] = -1.0
+            self.obs_high[index_offset:index_offset + 2] = 1.0
+            index_offset += 2
+        if self.include_episode_progress:
+            self.obs_low[index_offset] = 0.0
+            self.obs_high[index_offset] = 1.0
+            index_offset += 1
+
         for one_config in self.fmu_configs:
             io_type_name = one_config["io_type"]
             local_low = IO_DEFINITIONS[io_type_name]["ob_base_low"]
@@ -292,11 +298,16 @@ class MuFlex(gym.Env):
             self.obs_high[index_offset : index_offset + length] = local_high
             index_offset += length
 
-        # Public observation space matches returned (normalized) observations.
-        normalized_low = np.zeros(observation_dimension, dtype=np.float32)
-        normalized_high = np.ones(observation_dimension, dtype=np.float32)
+        # Public observation space matches returned observations.
+        if self.normalize_observation:
+            box_low = np.zeros(observation_dimension, dtype=np.float32)
+            box_high = np.ones(observation_dimension, dtype=np.float32)
+        else:
+            box_low = self.obs_low.copy()
+            box_high = self.obs_high.copy()
+
         self.observation_space = spaces.Box(
-            low=normalized_low, high=normalized_high, shape=(observation_dimension,), dtype=np.float32
+            low=box_low, high=box_high, shape=(observation_dimension,), dtype=np.float32
         )
 
     # ---------------------------------------------------------------------
@@ -327,7 +338,7 @@ class MuFlex(gym.Env):
             raw_observation = self.get_observation(self.time_steps[-1])
         else:
             raw_observation = self.get_observation(self.time_steps[self.current_step])
-        obs = self.scale_observation(raw_observation)
+        obs = self.format_observation(raw_observation)
         return obs, {}
 
     def step(self, action):
@@ -335,7 +346,7 @@ class MuFlex(gym.Env):
         if self.done:
             last_observation = self.get_observation(self.time_steps[-1])
             return (
-                self.scale_observation(last_observation),
+                self.format_observation(last_observation),
                 0.0,
                 True,
                 True,
@@ -440,7 +451,7 @@ class MuFlex(gym.Env):
 
         self.record_outputs(current_step)
         raw_next_observation = self.get_observation(current_time + self.step_size)
-        next_obs = self.scale_observation(raw_next_observation)
+        next_obs = self.format_observation(raw_next_observation)
         reward_value = self.compute_reward(next_obs)
 
         if collect_transition_data:
@@ -496,7 +507,7 @@ class MuFlex(gym.Env):
         log_rl(f"Control Mode: {control_mode}", tag="Step Info")
         log_rl(f"Global Action (raw input): {action}", tag="Step Info")
         log_rl(f"Global Action (physical values): {unscaled_actions}", tag="Step Info")
-        offset = 2 if self.include_hour else 0
+        offset = self._time_feature_dims()
         for i in range(self.num_fmus):
             out_len = len(self.output_names[i])
             fmux_raw_output = raw_obs_vals[offset : offset + out_len]
@@ -509,7 +520,8 @@ class MuFlex(gym.Env):
                 f"{self.fmu_labels[i]} physical action: {unscaled_actions[i]}",
                 tag="Step Info",
             )
-        log_rl(f"Next state (normalized): {next_obs}", tag="Step Info")
+        obs_type = "normalized" if self.normalize_observation else "raw"
+        log_rl(f"Next state ({obs_type}): {next_obs}", tag="Step Info")
         log_rl(f"Reward: {reward}", tag="Step Info")
 
     # ------------------------------------------------------------------
@@ -571,9 +583,20 @@ class MuFlex(gym.Env):
             for column_name, column_value in zip(output_variable_names, values_got):
                 self.record_dataframes[fmu_index].loc[step_index, column_name] = column_value
 
+    def _time_feature_dims(self) -> int:
+        """Return the number of environment-provided time features."""
+        dims = 0
+        if self.include_hour:
+            dims += 2
+        if self.include_day_of_year:
+            dims += 2
+        if self.include_episode_progress:
+            dims += 1
+        return dims
+
     def get_observation(self, target_time):
-        """Assemble *unnormalised* observation array for a given hour-of-the-day."""
-        total_observation_length = (2 if self.include_hour else 0)
+        """Assemble *unnormalised* observation array."""
+        total_observation_length = self._time_feature_dims()
         for outputs in self.output_names:
             total_observation_length += len(outputs)
         observation_array = np.zeros(total_observation_length, dtype=np.float32)
@@ -582,9 +605,21 @@ class MuFlex(gym.Env):
         if self.include_hour:
             hour_in_day = int((target_time - self.start_time_seconds) // 3600) % 24
             angle = 2.0 * np.pi * (hour_in_day / 24.0)
-            observation_array[0] = np.sin(angle)
-            observation_array[1] = np.cos(angle)
-            index_offset = 2
+            observation_array[index_offset] = np.sin(angle)
+            observation_array[index_offset + 1] = np.cos(angle)
+            index_offset += 2
+        if self.include_day_of_year:
+            day_of_year = (int(target_time // 86_400) % 365) + 1
+            day_angle = 2.0 * np.pi * ((day_of_year - 1) / 365.0)
+            observation_array[index_offset] = np.sin(day_angle)
+            observation_array[index_offset + 1] = np.cos(day_angle)
+            index_offset += 2
+        if self.include_episode_progress:
+            elapsed = float(target_time - self.start_time_seconds)
+            duration = float(max(self.stop_time_seconds - self.start_time_seconds, 1))
+            episode_progress = min(max(elapsed / duration, 0.0), 1.0)
+            observation_array[index_offset] = episode_progress
+            index_offset += 1
 
         # FMU outputs ----------------------------------------------
         for fmu_index, record_dataframe in enumerate(self.record_dataframes):
@@ -602,6 +637,12 @@ class MuFlex(gym.Env):
         """Normalise observations to the [0, 1] interval."""
         scaled_result = (observation_array - self.obs_low) / (self.obs_high - self.obs_low)
         return np.clip(scaled_result, 0.0, 1.0)
+
+    def format_observation(self, observation_array):
+        """Return observations according to the normalization switch."""
+        if self.normalize_observation:
+            return self.scale_observation(observation_array)
+        return observation_array.astype(np.float32)
 
     # ------------------------------------------------------------------
     # Persistence -------------------------------------------------------

@@ -1,6 +1,6 @@
 """Reference controller used for quick simulations (used in paper).
 
-The functions below provide a baseline policy that sends fixed temperature set‑points to each FMU.
+The functions below provide a baseline policy that sends fixed temperature set-points to each FMU.
 """
 
 from typing import Optional
@@ -14,7 +14,7 @@ from src.env import MuFlex
 def get_physical_action(io_type: str, mins: list[float], maxs: list[float], category: str = "building") -> list[float]:
     """Return a nominal physical action vector for one FMU.
 
-    The returned list contains *physical* set‑points in the order expected by
+    The returned list contains *physical* set-points in the order expected by
     the environment and is clipped to the FMU bounds.
     """
     if io_type == "OfficeS":
@@ -55,6 +55,9 @@ def run_baseline(
     max_steps: Optional[int] = None,
     action_type: str = "continuous",
     include_hour: bool = True,
+    include_day_of_year: bool = True,
+    include_episode_progress: bool = True,
+    normalize_observation: bool = True,
     rl_control_window_only: bool = True,
     office_hour_start: str = "08:00",
     office_hour_end: str = "18:00",
@@ -70,7 +73,7 @@ def run_baseline(
     sim_days, start_date, step_size : int
         Simulation horizon parameters forwarded to :class:`~src.env.MuFlex`.
     physical_actions : list[list[float]], optional
-        Explicit physical actions per FMU; defaults to nominal set‑points.
+        Explicit physical actions per FMU; defaults to nominal set-points.
     """
     env = MuFlex(
         fmu_configs=fmu_configs,
@@ -82,6 +85,9 @@ def run_baseline(
         reward_mode=reward_mode,
         save_results=save_results,
         include_hour=include_hour,
+        include_day_of_year=include_day_of_year,
+        include_episode_progress=include_episode_progress,
+        normalize_observation=normalize_observation,
         rl_control_window_only=rl_control_window_only,
         office_hour_start=office_hour_start,
         office_hour_end=office_hour_end,

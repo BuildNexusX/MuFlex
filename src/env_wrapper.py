@@ -22,6 +22,9 @@ class MuFlex(gym.Env):
         reward_mode: str = "default",
         save_results: bool = False,
         include_hour: bool = True,
+        include_day_of_year: bool = True,
+        include_episode_progress: bool = True,
+        normalize_observation: bool = True,
         double_reset: bool = False,
         rl_control_window_only: bool = True,
         office_hour_start: str = "08:00",
@@ -41,6 +44,9 @@ class MuFlex(gym.Env):
         self.reward_mode = reward_mode
 
         self.include_hour = include_hour
+        self.include_day_of_year = include_day_of_year
+        self.include_episode_progress = include_episode_progress
+        self.normalize_observation = normalize_observation
         self.double_reset = bool(double_reset)
 
         self.rl_control_window_only = bool(rl_control_window_only)
@@ -93,16 +99,58 @@ class MuFlex(gym.Env):
         else:
             assert False, "Unsupported action_type"
 
+    def _time_feature_dims(self) -> int:
+        dims = 0
+        if self.include_hour:
+            dims += 2
+        if self.include_day_of_year:
+            dims += 2
+        if self.include_episode_progress:
+            dims += 1
+        return dims
+
     def _build_observation_space(self):
         total_output_dims = sum(len(outs) for outs in self._output_names_list)
-        observation_dim = total_output_dims + (2 if self.include_hour else 0)
+        time_feature_dims = self._time_feature_dims()
+        observation_dim = total_output_dims + time_feature_dims
 
         obs_low = np.zeros(observation_dim, dtype=np.float32)
         obs_high = np.ones(observation_dim, dtype=np.float32)
 
+        index_offset = 0
+        if self.include_hour:
+            obs_low[0:2] = -1.0
+            obs_high[0:2] = 1.0
+            index_offset = 2
+        if self.include_day_of_year:
+            obs_low[index_offset:index_offset + 2] = -1.0
+            obs_high[index_offset:index_offset + 2] = 1.0
+            index_offset += 2
+        if self.include_episode_progress:
+            obs_low[index_offset] = 0.0
+            obs_high[index_offset] = 1.0
+            index_offset += 1
+
+        for cfg in self.fmu_configs:
+            io_type = cfg["io_type"]
+            io_def = IO_DEFINITIONS[io_type]
+            local_low = io_def["ob_base_low"]
+            local_high = io_def["ob_base_high"]
+            length = len(local_low)
+            obs_low[index_offset:index_offset + length] = local_low
+            obs_high[index_offset:index_offset + length] = local_high
+            index_offset += length
+
+        if self.normalize_observation:
+            box_low = np.zeros(observation_dim, dtype=np.float32)
+            box_high = np.ones(observation_dim, dtype=np.float32)
+        else:
+            box_low = obs_low.copy()
+            box_high = obs_high.copy()
+
         self.observation_space = spaces.Box(
-            low=obs_low,
-            high=obs_high,
+            low=box_low,
+            high=box_high,
             shape=(observation_dim,),
             dtype=np.float32,
         )
@@ -118,6 +166,9 @@ class MuFlex(gym.Env):
             reward_mode=self.reward_mode,
             save_results=self._save_results,
             include_hour=self.include_hour,
+            include_day_of_year=self.include_day_of_year,
+            include_episode_progress=self.include_episode_progress,
+            normalize_observation=self.normalize_observation,
             rl_control_window_only=self.rl_control_window_only,
             office_hour_start=self.office_hour_start,
             office_hour_end=self.office_hour_end,
