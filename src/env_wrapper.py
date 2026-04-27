@@ -23,6 +23,10 @@ class MuFlex(gym.Env):
         save_results: bool = False,
         include_hour: bool = True,
         double_reset: bool = False,
+        rl_control_window_only: bool = True,
+        office_hour_start: str = "08:00",
+        office_hour_end: str = "18:00",
+        step_info_print_interval: int = 0,
     ):
         super().__init__()
 
@@ -38,6 +42,11 @@ class MuFlex(gym.Env):
 
         self.include_hour = include_hour
         self.double_reset = bool(double_reset)
+
+        self.rl_control_window_only = bool(rl_control_window_only)
+        self.office_hour_start = str(office_hour_start)
+        self.office_hour_end = str(office_hour_end)
+        self.step_info_print_interval = max(0, int(step_info_print_interval))
 
         self._save_results = bool(save_results)
         self._episode_counter = 0
@@ -71,7 +80,10 @@ class MuFlex(gym.Env):
         if self.action_type == "continuous":
             total_dims = sum(len(dims) for dims in self._input_dims_list)
             self.action_space = spaces.Box(
-                low=-1.0, high=1.0, shape=(total_dims,), dtype=np.float32
+                low=-1.0,
+                high=1.0,
+                shape=(total_dims,),
+                dtype=np.float32,
             )
         elif self.action_type == "discrete":
             discrete_dims = []
@@ -85,12 +97,14 @@ class MuFlex(gym.Env):
         total_output_dims = sum(len(outs) for outs in self._output_names_list)
         observation_dim = total_output_dims + (2 if self.include_hour else 0)
 
-        # MuFlexCore returns normalized observations in [0, 1].
         obs_low = np.zeros(observation_dim, dtype=np.float32)
         obs_high = np.ones(observation_dim, dtype=np.float32)
 
         self.observation_space = spaces.Box(
-            low=obs_low, high=obs_high, shape=(observation_dim,), dtype=np.float32
+            low=obs_low,
+            high=obs_high,
+            shape=(observation_dim,),
+            dtype=np.float32,
         )
 
     def _make_inner_env(self):
@@ -104,6 +118,10 @@ class MuFlex(gym.Env):
             reward_mode=self.reward_mode,
             save_results=self._save_results,
             include_hour=self.include_hour,
+            rl_control_window_only=self.rl_control_window_only,
+            office_hour_start=self.office_hour_start,
+            office_hour_end=self.office_hour_end,
+            step_info_print_interval=self.step_info_print_interval,
         )
 
     def reset(self, seed=None, options=None):

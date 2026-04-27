@@ -6,12 +6,12 @@
 # 1 Example
 from src.env_wrapper import MuFlex
 fmu_configs = [{'io_type': 'OfficeS',
-  'path': 'C:/Users/Administrator/Desktop/code/MuFlex/models/small_office/small_baseline_v1.fmu'},
+  'path': 'C:/code/MuFlex/models/small_office/small_baseline_v1.fmu'},
  {'io_type': 'OfficeS',
-  'path': 'C:/Users/Administrator/Desktop/code/MuFlex/models/small_office/small_baseline_v2.fmu'},
+  'path': 'C:/code/MuFlex/models/small_office/small_baseline_v2.fmu'},
  {'io_type': 'OfficeM',
-  'path': 'C:/Users/Administrator/Desktop/code/MuFlex/models/medium_office/medium_baseline_v1.fmu'},
+  'path': 'C:/code/MuFlex/models/medium_office/medium_baseline_v1.fmu'},
  {'io_type': 'OfficeM',
-  'path': 'C:/Users/Administrator/Desktop/code/MuFlex/models/medium_office/medium_baseline_v2.fmu'}]
+  'path': 'C:/code/MuFlex/models/medium_office/medium_baseline_v2.fmu'}]
 env = MuFlex(fmu_configs=fmu_configs, sim_days=1, start_date=201, step_size=900, action_type='continuous', include_hour=True, reward_mode='demand_limiting_reward')
 ---

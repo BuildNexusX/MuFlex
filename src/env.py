@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import os
 import datetime
+import re
 from pyfmi import load_fmu
 import gymnasium as gym
 from gymnasium import spaces
@@ -98,6 +99,10 @@ class MuFlex(gym.Env):
         reward_mode: str = "default",
         save_results: bool = False,
         include_hour: bool = True,
+        rl_control_window_only: bool = True,
+        office_hour_start: str = "08:00",
+        office_hour_end: str = "18:00",
+        step_info_print_interval: int = 0,
     ):
         # Set up FMUs, simulation horizon and reward parameters -------------------------------------------------
         self.fmu_configs = fmu_configs
@@ -109,6 +114,12 @@ class MuFlex(gym.Env):
         self.action_type = action_type.lower()
         self.save_results = save_results
         self.include_hour = include_hour
+        self.rl_control_window_only = bool(rl_control_window_only)
+        self.office_hour_start = str(office_hour_start)
+        self.office_hour_end = str(office_hour_end)
+        self.office_hour_start_seconds = self._parse_hour_string_to_seconds(self.office_hour_start)
+        self.office_hour_end_seconds = self._parse_hour_string_to_seconds(self.office_hour_end)
+        self.step_info_print_interval = max(0, int(step_info_print_interval))
         self.reward_list = []
         self.reward_mode = reward_mode
         import types
@@ -270,30 +281,34 @@ class MuFlex(gym.Env):
     # ---------------------------------------------------------------------
 
     def reset(self, seed=None, options=None):
-        """ Reset environment – Internal logs are cleared but FMUs retain their state across
-        episodes. TODO: Extend this method if FMU re-initialisation is required."""
+        """Reset environment and move to the first RL-control step if needed."""
         super().reset(seed=seed)
         self.current_step = 0
         self.done = False
         self.truncated = False
 
-        # Clear in‑memory DataFrames.
+        # Clear in-memory DataFrames and transition records.
         for record_dataframe in self.record_dataframes:
             record_dataframe.drop(record_dataframe.index, inplace=True)
+        self.reward_list.clear()
 
-        raw_observation = self.get_observation(self.time_steps[self.current_step])
+        # Same office-hour handling as the reference code:
+        # outside the RL control window, advance the FMUs with default actions
+        # but do not collect these steps as RL transitions/rewards.
+        if self.rl_control_window_only:
+            default_action = self._default_action()
+            while (not self.done) and (not self._is_rl_control_step(self.current_step)):
+                self._advance_one_step(default_action, collect_transition_data=False)
+
+        if self.done:
+            raw_observation = self.get_observation(self.time_steps[-1])
+        else:
+            raw_observation = self.get_observation(self.time_steps[self.current_step])
         obs = self.scale_observation(raw_observation)
         return obs, {}
 
     def step(self, action):
-        """Execute one simulation step.
-
-        Returns a 5‑tuple `(obs, reward, done, truncated, info)` consistent with
-        Gymnasium v0.29.
-        """
-        # ------------------------------------------------------------------
-        # 0. Handle *after‑terminal* call (as per Gym contract) ------------
-        # ------------------------------------------------------------------
+        """Execute one RL transition during the office-hour control window."""
         if self.done:
             last_observation = self.get_observation(self.time_steps[-1])
             return (
@@ -303,9 +318,133 @@ class MuFlex(gym.Env):
                 True,
                 {"TimeLimit.truncated": True},
             )
-        # ------------------------------------------------------------------
-        # 1. Action validation ---------------------------------------------
-        # ------------------------------------------------------------------
+
+        if self.rl_control_window_only and not self._is_rl_control_step(self.current_step):
+            raise RuntimeError(
+                f"step() called outside RL control window at step {self.current_step}. "
+                "Call reset() first and only step using returned transitions."
+            )
+
+        next_obs, reward_value, done, truncated = self._advance_one_step(
+            action,
+            collect_transition_data=True,
+        )
+
+        if self.rl_control_window_only:
+            default_action = self._default_action()
+            while (not self.done) and (not self._is_rl_control_step(self.current_step)):
+                next_obs, _, done, truncated = self._advance_one_step(
+                    default_action,
+                    collect_transition_data=False,
+                )
+
+        return next_obs, reward_value, done, truncated, {"TimeLimit.truncated": truncated}
+
+    # ---------------------------------------------------------------------
+    # Helper / utility methods -------------------------------------------
+    # ---------------------------------------------------------------------
+    def _default_action(self):
+        """Return the default action used outside office hours."""
+        default_values = []
+        for fmu_index in range(self.num_fmus):
+            default_values.extend([1.0] * len(self.input_dims_list[fmu_index]))
+
+        if self.action_type == "continuous":
+            return np.array(default_values, dtype=np.float32)
+
+        discrete_action = []
+        cursor = 0
+        for fmu_index in range(self.num_fmus):
+            dims = self.input_dims_list[fmu_index]
+            mins = self.base_mins_list[fmu_index]
+            intervals = self.intervals_list[fmu_index]
+            for dim_index, dim_size in enumerate(dims):
+                target_val = default_values[cursor]
+                base_min = float(mins[dim_index])
+                interval = float(intervals[dim_index])
+                if interval <= 0:
+                    idx = 0
+                else:
+                    idx = int(round((target_val - base_min) / interval))
+                idx = max(0, min(dim_size - 1, idx))
+                discrete_action.append(idx)
+                cursor += 1
+
+        return np.array(discrete_action, dtype=np.int64)
+
+    def _is_rl_control_step(self, step_index: int) -> bool:
+        """Return True when the current step is inside the office-hour window."""
+        if not self.rl_control_window_only:
+            return True
+        if step_index >= self.num_steps:
+            return False
+
+        current_time = int(self.time_steps[step_index])
+        seconds_in_day = (current_time - self.start_time_seconds) % 86_400
+        return self.office_hour_start_seconds <= seconds_in_day < self.office_hour_end_seconds
+
+    @staticmethod
+    def _parse_hour_string_to_seconds(hour_string: str) -> int:
+        """Parse office-hour string in HH:MM format into seconds."""
+        match = re.fullmatch(r"([01]\d|2[0-3]):([0-5]\d)", hour_string)
+        if match is None:
+            raise ValueError(f"Invalid office hour format: {hour_string}. Expected HH:MM.")
+        hour = int(match.group(1))
+        minute = int(match.group(2))
+        return hour * 3600 + minute * 60
+
+    def _advance_one_step(self, action, collect_transition_data: bool):
+        """Advance one physical simulation step.
+
+        collect_transition_data=True means this step is an RL transition.
+        collect_transition_data=False means this is an outside-office-hour default step.
+        """
+        self._validate_action(action)
+        unscaled_actions = self.unscale_action(action)
+
+        current_step = self.current_step
+        current_time = self.time_steps[current_step]
+
+        for fmu_index, fmu_object in enumerate(self.fmus):
+            input_var_names = self.input_names[fmu_index]
+            input_values = unscaled_actions[fmu_index]
+            for name_item, value_item in zip(input_var_names, input_values):
+                fmu_object.set(name_item, value_item)
+            self.record_dataframes[fmu_index].loc[current_step, input_var_names] = input_values
+
+        for fmu_object in self.fmus:
+            fmu_object.do_step(current_t=current_time, step_size=self.step_size, new_step=True)
+
+        self.record_outputs(current_step)
+        raw_next_observation = self.get_observation(current_time + self.step_size)
+        next_obs = self.scale_observation(raw_next_observation)
+        reward_value = self.compute_reward(next_obs)
+
+        if collect_transition_data:
+            self.reward_list.append({"Step": current_step, "TotalReward": reward_value})
+
+        if self._should_print_step_info(current_step):
+            control_mode = "RL" if collect_transition_data else "DEFAULT"
+            self._print_step_info(
+                action,
+                unscaled_actions,
+                raw_next_observation,
+                next_obs,
+                reward_value,
+                control_mode,
+            )
+
+        self.current_step += 1
+        if self.current_step >= self.num_steps:
+            self.done = True
+            self.truncated = True
+        else:
+            self.truncated = False
+
+        return next_obs, reward_value, self.done, self.truncated
+
+    def _validate_action(self, action) -> None:
+        """Validate the flattened action before applying it to FMUs."""
         if self.action_type == "discrete":
             start = 0
             for fmu_idx in range(self.num_fmus):
@@ -319,63 +458,19 @@ class MuFlex(gym.Env):
                             f"dimension {dim_index}: {val}"
                         )
                 start = end
-        else:
-            if np.any(action < -1.0) or np.any(action > 1.0):
-                raise ValueError(f"Continuous action out-of-bounds, action = {action}")
+            return
 
-        # ------------------------------------------------------------------
-        # 2. Map actions → physical set‑points ------------------------------
-        # ------------------------------------------------------------------
-        unscaled_actions = self.unscale_action(action)
+        if np.any(action < -1.0) or np.any(action > 1.0):
+            raise ValueError(f"Continuous action out-of-bounds, action = {action}")
 
-        # ------------------------------------------------------------------
-        # 3. Apply to FMUs --------------------------------------------------
-        # ------------------------------------------------------------------
-        current_time = self.time_steps[self.current_step]
-        for fmu_index, fmu_object in enumerate(self.fmus):
-            input_var_names = self.input_names[fmu_index]
-            input_values = unscaled_actions[fmu_index]
-            for name_item, value_item in zip(input_var_names, input_values):
-                fmu_object.set(name_item, value_item)
-            # Cache for debugging/export.
-            self.record_dataframes[fmu_index].loc[self.current_step, input_var_names] = input_values
-        # Perform co‑simulation step (Co‑simulation FMUs prefer *do_step*).
-        for fmu_object in self.fmus:
-            fmu_object.do_step(current_t=current_time, step_size=self.step_size, new_step=True)
+    def _should_print_step_info(self, step_index: int) -> bool:
+        """Control whether verbose step information is printed."""
+        return self.step_info_print_interval > 0 and (step_index % self.step_info_print_interval == 0)
 
-        # ------------------------------------------------------------------
-        # 4. Collect outputs & compute reward ------------------------------
-        # ------------------------------------------------------------------
-        self.record_outputs(self.current_step)
-        raw_next_observation = self.get_observation(current_time + self.step_size)
-        next_obs = self.scale_observation(raw_next_observation)
-        reward_value = self.compute_reward(next_obs)
-
-        # Track per-step reward for offline inspection.
-        self.reward_list.append({"Step": self.current_step, "TotalReward": reward_value})
-
-        # Optional verbose printout at selected steps.
-        if self.current_step % 50 == 0:
-            self._print_step_info(action, unscaled_actions, raw_next_observation, next_obs, reward_value)
-
-        # ------------------------------------------------------------------
-        # 5. Advance global index & flag termination -----------------------
-        # ------------------------------------------------------------------
-        self.current_step += 1
-        if self.current_step >= self.num_steps:
-            self.done = True
-            self.truncated = True
-        else:
-            self.truncated = False
-        return next_obs, reward_value, self.done, self.truncated, {"TimeLimit.truncated": self.truncated}
-
-    # ---------------------------------------------------------------------
-    # Helper / utility methods -------------------------------------------
-    # ---------------------------------------------------------------------
-    def _print_step_info(self, action, unscaled_actions, raw_obs_vals, next_obs, reward):
-        """Pretty console dump for debugging at *select* steps."""
+    def _print_step_info(self, action, unscaled_actions, raw_obs_vals, next_obs, reward, control_mode):
         green_print("--------------------------------------------------")
         green_print(f"[Step Info] Step: {self.current_step}")
+        green_print(f"  Control Mode: {control_mode}")
         green_print(f"  Global Action (raw input): {action}")
         green_print(f"  Global Action (physical values): {unscaled_actions}")
         offset = 2 if self.include_hour else 0
@@ -518,4 +613,3 @@ class MuFlex(gym.Env):
         if self.save_results:
             self.save_fmu_data()
             self.save_reward_data()
-
