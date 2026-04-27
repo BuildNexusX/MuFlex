@@ -103,8 +103,11 @@ env = MuFlex(                                                 ⎪  This setup ca
     step_size=900,                                            ⎪
     action_type='continuous',                                 ⎪
     include_hour=True,                                        ⎪
+    include_day_of_year=True,                                 ⎪
+    include_episode_progress=True,                            ⎪
+    normalize_observation=True,                               ⎪
     reward_mode='example_reward'                              ⎪
-)                                                             ⎭
+)  
   
 from stable_baselines3 import SAC
 model = SAC("MlpPolicy", env = MuFlex)
@@ -129,16 +132,29 @@ Once you select the simulated models (i.e., `fmu_configs` with `io_type` + `path
 - **Action space** is constructed by concatenating all FMU **INPUTS**:
   - `action_type="continuous"` → `spaces.Box(low=-1, high=1, shape=(total_inputs,))`
   - `action_type="discrete"` → `spaces.MultiDiscrete(dims_per_input)`
-- **Observation (state) space** is constructed by concatenating all FMU **OUTPUTS** (then normalized to `[0, 1]`).
+- **Observation (state) space** is constructed by concatenating environment-provided time features and all FMU **OUTPUTS**.
+  - If `normalize_observation=True`, the returned observation is normalized to `[0, 1]`.
+  - If `normalize_observation=False`, the returned observation keeps its raw physical values.
 
-#### ⏰ `include_hour` adds +2 dimensions
-If `include_hour=True`, MuFlex prepends **two time features** to the observation vector:
-- `sin(hour_of_day)` and `cos(hour_of_day)` (both naturally in `[-1, 1]`)
+#### ⏰ Environment-provided time observations
+MuFlex can prepend three types of time features to the observation vector:
 
-So the final observation dimension becomes:
+- `include_hour=True` adds:
+  - `sin(hour_of_day)`
+  - `cos(hour_of_day)`
 
-- `obs_dim = total_outputs` (if `include_hour=False`)
-- `obs_dim = total_outputs + 2` (if `include_hour=True`)
+- `include_day_of_year=True` adds:
+  - `sin(day_of_year)`
+  - `cos(day_of_year)`
+
+- `include_episode_progress=True` adds:
+  - `episode_progress`
+
+By default, all three switches are enabled, so MuFlex prepends **5 time-feature dimensions**:
+
+```text
+[hour_sin, hour_cos, day_of_year_sin, day_of_year_cos, episode_progress]
+```
 
 ---
 
@@ -157,14 +173,15 @@ So the final observation dimension becomes:
 ### 🔌 Tab 1 - Create & Save RL Environment
 - Select FMU types (defined in `Add_FMU.py`) and provide FMU paths
 - Set simulation horizon (days, start day-of-year, step size)
-- Choose action type (`continuous` / `discrete`) and optionally enable `include_hour`
+- Choose action type (`continuous` / `discrete`)
+- Configure observation options
 - Choose reward mode (default or custom)
 - Name and save the environment (saved to `src/env_list.txt`)
 
 ### 🔌 Tab 2 - Run Baseline Controller
 - Select a saved environment
+- Configure baseline run settings:
 - Specify fixed baseline actions for each FMU
-- Optionally enable result saving and step logging
 - Run to verify the model runs correctly before RL training
 
 ### 🔌 Tab 3 - Manage Environments
