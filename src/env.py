@@ -101,9 +101,8 @@ class MuFlex(gym.Env):
     action_type : {'continuous', 'discrete'}, default='continuous'
         * continuous → actions in ``[-1, 1]`` mapped linearly to physical range.
         * discrete   → integer bins defined in ``dims_*`` tables.
-    reward_mode : str, default='default'
-        Reward mode name. Supports built-ins (``default``, ``custom``) and
-        user scripts from ``algo/reward/<mode>.py``.
+    reward_mode : str, default='example_reward'
+        Reward mode name. Uses scripts from ``algo/reward/<mode>.py``.
     save_results : bool, default=False
         Persist per-step I/O and reward traces to ``./simulation_data_<timestamp>/``.
     """
@@ -116,7 +115,7 @@ class MuFlex(gym.Env):
         step_size: int = 900,
         log_level: int = 7,
         action_type: str = "continuous",
-        reward_mode: str = "default",
+        reward_mode: str = "example_reward",
         save_results: bool = False,
         include_hour: bool = True,
         include_day_of_year: bool = True,

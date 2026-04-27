@@ -116,7 +116,15 @@ def normalize_fmu_paths(fmu_configs: list[dict[str, Any]], repo_root: Path) -> l
 def build_actions(env: MuFlex, fmu_configs: list[dict[str, Any]], action_type: str) -> np.ndarray:
     """Build the normalized action vector based on io_type defaults."""
     io_types = [cfg["io_type"] for cfg in fmu_configs]
-    physical_actions = [get_physical_action(io_type) for io_type in io_types]
+    physical_actions = [
+        get_physical_action(
+            io_type=io_type,
+            mins=env.base_mins_list[idx],
+            maxs=env.base_maxs_list[idx],
+            category=env.fmu_categories[idx],
+        )
+        for idx, io_type in enumerate(io_types)
+    ]
 
     converted_actions: list[float] = []
     for idx, phys in enumerate(physical_actions):

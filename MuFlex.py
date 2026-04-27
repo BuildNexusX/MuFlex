@@ -154,7 +154,7 @@ class MuFlexGUI(tk.Tk):
         self.notebook.add(self.run_tab, text="Run Baseline")
         self.notebook.add(self.manage_tab, text="Manage Envs")
 
-        # -------------------- NEW: make each tab scrollable --------------------
+        # Make each tab scrollable.
         self.create_scroll = ScrollableFrame(self.create_tab, bg="white", bg_image=self._bg_image)
         self.create_scroll.pack(fill="both", expand=True)
         self.create_body = self.create_scroll.interior
@@ -336,8 +336,8 @@ class MuFlexGUI(tk.Tk):
         self.reward_confirmed = False
         self.reward_modes = list_available_reward_modes()
         if not self.reward_modes:
-            self.reward_modes = ["default"]
-        default_mode = "default" if "default" in self.reward_modes else self.reward_modes[0]
+            self.reward_modes = ["example_reward"]
+        default_mode = "example_reward" if "example_reward" in self.reward_modes else self.reward_modes[0]
         self.reward_mode = tk.StringVar(value=default_mode)
         self.reward_mode_buttons: list[tk.Radiobutton] = []
 
@@ -1064,7 +1064,7 @@ class MuFlexGUI(tk.Tk):
                 "sim_days": params.get("sim_days", 1),
                 "start_date": params.get("start_date", 1),
                 "step_size": params.get("step_size", 900),
-                "reward_mode": params.get("reward_mode", "default"),
+                "reward_mode": params.get("reward_mode", "example_reward"),
                 "action_type": params.get("action_type", "continuous"),
                 "include_hour": params.get("include_hour", True),
                 "include_day_of_year": params.get("include_day_of_year", True),
@@ -1209,7 +1209,7 @@ class MuFlexGUI(tk.Tk):
                 sim_days=self.current_env_params.get("sim_days", 1),
                 start_date=self.current_env_params.get("start_date", 1),
                 step_size=self.current_env_params.get("step_size", 900),
-                reward_mode=self.current_env_params.get("reward_mode", "default"),
+                reward_mode=self.current_env_params.get("reward_mode", "example_reward"),
                 save_results=self.save_results_var.get(),
                 max_steps=max_steps,
                 action_type=self.current_env_params.get("action_type", "continuous"),

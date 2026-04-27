@@ -48,7 +48,7 @@ def compute_reward(self, scaled_observation):
     # ------------------------------------------------------------------
     # 1. Aggregate HVAC power -----------------------------------------
     # ------------------------------------------------------------------
-    index_offset = 2 if getattr(self, "include_hour", False) else 0
+    index_offset = self._time_feature_dims()
     total_hvac_power_actual = 0.0
     for fmu_index, cfg in enumerate(self.fmu_configs):
         outputs = self.output_names[fmu_index]
@@ -85,7 +85,7 @@ def compute_reward(self, scaled_observation):
     # 2. Thermal comfort ----------------------------------------------
     # ------------------------------------------------------------------
     if is_work_time:
-        index_offset_for_temp = 2 if getattr(self, "include_hour", False) else 0
+        index_offset_for_temp = self._time_feature_dims()
         for fmu_index, cfg in enumerate(self.fmu_configs):
             outputs = self.output_names[fmu_index]
             out_len = len(outputs)

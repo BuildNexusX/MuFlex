@@ -110,7 +110,7 @@ env = MuFlex(                                                 ⎪  This setup ca
 )  
   
 from stable_baselines3 import SAC
-model = SAC("MlpPolicy", env = MuFlex)
+model = SAC("MlpPolicy", env=env)
 model.learn(total_timesteps=200_000)
 model.save()
 

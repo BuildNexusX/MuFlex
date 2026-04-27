@@ -19,7 +19,7 @@ class MuFlex(gym.Env):
         step_size: int = 900,
         log_level: int = 7,
         action_type: str = "continuous",
-        reward_mode: str = "default",
+        reward_mode: str = "example_reward",
         save_results: bool = False,
         include_hour: bool = True,
         include_day_of_year: bool = True,
@@ -97,7 +97,7 @@ class MuFlex(gym.Env):
                 discrete_dims.extend(dims)
             self.action_space = spaces.MultiDiscrete(discrete_dims)
         else:
-            assert False, "Unsupported action_type"
+            raise ValueError("Unsupported action_type")
 
     def _time_feature_dims(self) -> int:
         dims = 0
