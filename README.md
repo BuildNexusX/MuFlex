@@ -107,7 +107,7 @@ env = MuFlex(                                                 ⎪  This setup ca
     include_episode_progress=True,                            ⎪
     normalize_observation=True,                               ⎪
     reward_mode='example_reward'                              ⎪
-)  
+)                                                             ⎭
   
 from stable_baselines3 import SAC
 model = SAC("MlpPolicy", env=env)
