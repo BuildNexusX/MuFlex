@@ -188,7 +188,7 @@ def run_scalability_test(
     step_size = env_kwargs.get("step_size", 900)
     action_type = env_kwargs.get("action_type", "continuous")
     include_hour = env_kwargs.get("include_hour", True)
-    reward_mode = env_kwargs.get("reward_mode", "default")
+    reward_mode = env_kwargs.get("reward_mode", "example_reward")
 
     env = MuFlex(
         fmu_configs=fmu_configs,
