@@ -5,7 +5,7 @@ import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
 
-from src.env import MuFlex as MuFlexCore, IO_DEFINITIONS
+from src.env import MuFlex as MuFlexCore, IO_DEFINITIONS, log_rl
 
 
 class MuFlex(gym.Env):
@@ -26,7 +26,7 @@ class MuFlex(gym.Env):
         rl_control_window_only: bool = True,
         office_hour_start: str = "08:00",
         office_hour_end: str = "18:00",
-        step_info_print_interval: int = 0,
+        step_info_print_interval: int = 10,
     ):
         super().__init__()
 
@@ -129,7 +129,7 @@ class MuFlex(gym.Env):
             try:
                 self._env.close()
             except Exception as e:
-                print(f"[MuFlex Wrapper Reset] Previous inner env close failed: {e}")
+                log_rl(f"Previous inner env close failed: {e}", tag="Wrapper Reset")
             finally:
                 self._env = None
 
@@ -155,7 +155,7 @@ class MuFlex(gym.Env):
             try:
                 self._env.close()
             except Exception as e:
-                print(f"[MuFlex Wrapper Close] Inner env close failed: {e}")
+                log_rl(f"Inner env close failed: {e}", tag="Wrapper Close")
             finally:
                 self._env = None
 

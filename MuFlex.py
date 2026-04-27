@@ -393,9 +393,7 @@ class MuFlexGUI(tk.Tk):
         self.env_menu.grid(row=0, column=1, sticky="w")
 
         self.save_results_var = tk.BooleanVar(value=False)
-        self.print_steps_var = tk.BooleanVar(value=False)
         tk.Checkbutton(run_frame, text="Save results", variable=self.save_results_var, bg="white").grid(row=1, column=0, sticky="w")
-        tk.Checkbutton(run_frame, text="Print steps", variable=self.print_steps_var, bg="white").grid(row=1, column=1, sticky="w")
 
         # Baseline action configuration ---------------------------------
         self.building_action_frame = tk.LabelFrame(run_frame, text="Building Actions", bg="white", labelanchor="n")
@@ -1082,7 +1080,6 @@ class MuFlexGUI(tk.Tk):
                 step_size=self.current_env_params.get("step_size", 900),
                 reward_mode=self.current_env_params.get("reward_mode", "default"),
                 save_results=self.save_results_var.get(),
-                print_steps=self.print_steps_var.get(),
                 action_type=self.current_env_params.get("action_type", "continuous"),
                 include_hour=self.current_env_params.get("include_hour", True),
                 physical_actions=self.physical_actions,

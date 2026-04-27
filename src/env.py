@@ -1,4 +1,4 @@
-"""Gymnasium environment wrapping multiple building FMUs (Functional Mock‑up Units)"""
+"""Gymnasium environment wrapping multiple building FMUs (Functional Mock-up Units)"""
 
 import numpy as np
 import pandas as pd
@@ -12,7 +12,7 @@ from src.config import load_fmu_config
 from src.reward_registry import resolve_reward_function
 
 # -----------------------------------------------------------------------------
-# Colour‑helper print functions -------------------------------------------------
+# Colour-helper print functions -------------------------------------------------
 # -----------------------------------------------------------------------------
 
 def blue_print(*args, **kwargs):
@@ -26,6 +26,27 @@ def yellow_print(*args, **kwargs):
 
 def magenta_print(*args, **kwargs):
     print("\033[35m", *args, "\033[0m", **kwargs)
+
+_RESET = "\033[0m"
+_RL_COLOR = "\033[35m"
+_FMU_COLOR = "\033[31m"
+
+def _format_prefix(category, tag=None):
+    parts = [category]
+    if tag:
+        parts.append(tag)
+    return "[" + "][".join(parts) + "]"
+
+def _log(message_parts, *, category, tag=None, color=None):
+    prefix = _format_prefix(category, tag)
+    message = " ".join(str(part) for part in message_parts)
+    print(f"{color}{prefix} {message}{_RESET}")
+
+def log_rl(*messages, tag=None):
+    _log(messages, category="RL", tag=tag, color=_RL_COLOR)
+
+def log_fmu(*messages, tag=None):
+    _log(messages, category="FMU", tag=tag, color=_FMU_COLOR)
 
 def _load_io_definitions():
     """Load I/O definitions for each FMU archetype from config."""
@@ -58,10 +79,10 @@ def _format_category_label(category: str) -> str:
 class MuFlex(gym.Env):
     """MuFlex - A Physics-based Platform for Multi-Building Flexibility Analysis and Coordination
 
-    The environment instantiates one FMU per building and steps them in lock‑step
+    The environment instantiates one FMU per building and steps them in lock-step
     every `step_size` seconds.  An agent receives *normalised observations* and
     returns either continuous or discrete actions that are mapped to physical
-    set‑points.
+    set-points.
 
     Parameters
     ----------
@@ -85,7 +106,7 @@ class MuFlex(gym.Env):
         Reward mode name. Supports built-ins (``default``, ``custom``) and
         user scripts from ``algo/reward/<mode>.py``.
     save_results : bool, default=False
-        Persist per‑step I/O and reward traces to ``./simulation_data_<timestamp>/``.
+        Persist per-step I/O and reward traces to ``./simulation_data_<timestamp>/``.
     """
 
     def __init__(
@@ -102,7 +123,7 @@ class MuFlex(gym.Env):
         rl_control_window_only: bool = True,
         office_hour_start: str = "08:00",
         office_hour_end: str = "18:00",
-        step_info_print_interval: int = 0,
+        step_info_print_interval: int = 10,
     ):
         # Set up FMUs, simulation horizon and reward parameters -------------------------------------------------
         self.fmu_configs = fmu_configs
@@ -130,7 +151,7 @@ class MuFlex(gym.Env):
         now = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         self.output_folder = f"simulation_data_{now}"
         if self.save_results:
-            blue_print("Saving results is enabled.")
+            log_rl("Saving results is enabled.", tag="Config")
 
         # ------------------------------------------------------------------
         # Time axis construction
@@ -156,7 +177,7 @@ class MuFlex(gym.Env):
         self.fmus = []                # list[pyfmi.FMUModelCS2]
         self.input_names = []         # list[list[str]]
         self.output_names = []        # list[list[str]]
-        self.record_dataframes = []   # mirrors per‑FMU I/O for later export
+        self.record_dataframes = []   # mirrors per-FMU I/O for later export
         self.input_dims_list = []
         self.intervals_list = []
         self.base_mins_list = []
@@ -177,14 +198,16 @@ class MuFlex(gym.Env):
             self.fmu_labels.append(fmu_label)
 
             # --- Load and initialise the FMU --------------------------------
-            blue_print(
-                f"[Init] Loading {self.fmu_labels[fmu_index]}: "
-                f"io_type = {io_type_name}, path = {fmu_path}"
+            log_fmu(
+                f"Loading {self.fmu_labels[fmu_index]}: "
+                f"io_type = {io_type_name}, path = {fmu_path}",
+                tag="Init",
             )
             fmu_object = load_fmu(fmu_path, kind="cs", log_level=self.log_level)
-            blue_print(
-                f"[Init] Initializing {self.fmu_labels[fmu_index]}, time range = "
-                f"({self.start_time_seconds}, {self.stop_time_seconds})"
+            log_fmu(
+                f"Initializing {self.fmu_labels[fmu_index]}, time range = "
+                f"({self.start_time_seconds}, {self.stop_time_seconds})",
+                tag="Init",
             )
             fmu_object.initialize(
                 start_time=self.start_time_seconds,
@@ -468,26 +491,32 @@ class MuFlex(gym.Env):
         return self.step_info_print_interval > 0 and (step_index % self.step_info_print_interval == 0)
 
     def _print_step_info(self, action, unscaled_actions, raw_obs_vals, next_obs, reward, control_mode):
-        green_print("--------------------------------------------------")
-        green_print(f"[Step Info] Step: {self.current_step}")
-        green_print(f"  Control Mode: {control_mode}")
-        green_print(f"  Global Action (raw input): {action}")
-        green_print(f"  Global Action (physical values): {unscaled_actions}")
+        log_rl("--------------------------------------------------", tag="Step Info")
+        log_rl(f"Step: {self.current_step}", tag="Step Info")
+        log_rl(f"Control Mode: {control_mode}", tag="Step Info")
+        log_rl(f"Global Action (raw input): {action}", tag="Step Info")
+        log_rl(f"Global Action (physical values): {unscaled_actions}", tag="Step Info")
         offset = 2 if self.include_hour else 0
         for i in range(self.num_fmus):
             out_len = len(self.output_names[i])
             fmux_raw_output = raw_obs_vals[offset : offset + out_len]
             offset += out_len
-            green_print(f"  {self.fmu_labels[i]} raw output: {fmux_raw_output}")
-            green_print(f"  {self.fmu_labels[i]} physical action: {unscaled_actions[i]}")
-        green_print(f"  Next state (normalized): {next_obs}")
-        green_print(f"  Reward: {reward}")
+            log_fmu(
+                f"{self.fmu_labels[i]} observation outputs ({self.output_names[i]}): {fmux_raw_output}",
+                tag="Step Info",
+            )
+            log_fmu(
+                f"{self.fmu_labels[i]} physical action: {unscaled_actions[i]}",
+                tag="Step Info",
+            )
+        log_rl(f"Next state (normalized): {next_obs}", tag="Step Info")
+        log_rl(f"Reward: {reward}", tag="Step Info")
 
     # ------------------------------------------------------------------
     # Action scaling ----------------------------------------------------
     # ------------------------------------------------------------------
     def unscale_action(self, action):
-        """Convert agent output → *physical* set‑points.
+        """Convert agent output → *physical* set-points.
 
         Continuous case performs linear interpolation + rounding to nearest
         `interval`.  Discrete case simply looks up via bin index.
@@ -585,7 +614,7 @@ class MuFlex(gym.Env):
         for i, df in enumerate(self.record_dataframes):
             file_path = os.path.join(output_folder, f"fmu_{i + 1}_data.xlsx")
             df.to_excel(file_path, index_label="Step")
-            blue_print(f"Saved {self.fmu_labels[i]} data to: {file_path}")
+            log_fmu(f"Saved {self.fmu_labels[i]} data to: {file_path}", tag="Save")
 
     def save_reward_data(self, output_folder=None):
         """Write stepwise reward history to an Excel file."""
@@ -595,21 +624,21 @@ class MuFlex(gym.Env):
         df_rewards = pd.DataFrame(self.reward_list)
         file_path = os.path.join(output_folder, "rewards.xlsx")
         df_rewards.to_excel(file_path, index=False)
-        blue_print(f"Saved reward data to: {file_path}")
+        log_rl(f"Saved reward data to: {file_path}", tag="Save")
 
     # ------------------------------------------------------------------
     # Cleanup -----------------------------------------------------------
     # ------------------------------------------------------------------
     def close(self):
         """Terminate FMUs and optionally persist simulation data."""
-        blue_print("[Close] Terminating all FMUs...")
+        log_rl("Terminating all FMUs...", tag="Close")
         for fmu_index, fmu_object in enumerate(self.fmus):
             try:
                 fmu_object.terminate()
-                blue_print(f"[Close] {self.fmu_labels[fmu_index]} terminated successfully.")
+                log_fmu(f"{self.fmu_labels[fmu_index]} terminated successfully.", tag="Close")
             except Exception as e:
-                blue_print(f"[Close] {self.fmu_labels[fmu_index]} termination failed: {e}")
-        blue_print("[Close] All FMUs have been processed.")
+                log_rl(f"{self.fmu_labels[fmu_index]} termination failed: {e}", tag="Close")
+        log_rl("All FMUs have been processed.", tag="Close")
         if self.save_results:
             self.save_fmu_data()
             self.save_reward_data()
